@@ -52,7 +52,7 @@ void ram_console_enable_console(int enabled)
 }
 
 #ifdef CONFIG_OF
-static struct ram_console_platform_data *
+static struct ram_console_platform_data *__devinit
 ram_console_of_init(struct platform_device *pdev)
 {
 	struct ram_console_platform_data *pdata = NULL;
@@ -85,7 +85,7 @@ ram_console_of_init(struct platform_device *pdev)
 	return pdata;
 }
 #else
-static inline struct ram_console_platform_data *
+static inline struct ram_console_platform_data *__devinit
 ram_console_of_init(struct platform_device *pdev)
 {
 	return NULL;
