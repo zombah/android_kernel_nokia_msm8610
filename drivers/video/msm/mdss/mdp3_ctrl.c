@@ -1611,6 +1611,43 @@ static int mdp3_ctrl_lut_update(struct msm_fb_data_type *mfd,
 	return rc;
 }
 
+static int mdp3_overlay_prepare(struct msm_fb_data_type *mfd,
+		struct mdp_overlay_list __user *user_ovlist)
+{
+	struct mdp_overlay_list ovlist;
+	struct mdp3_session_data *mdp3_session = mfd->mdp.private1;
+	struct mdp_overlay *req;
+	int rc;
+
+	if (!mdp3_session)
+		return -ENODEV;
+
+	req = &mdp3_session->req_overlay;
+
+	if (copy_from_user(&ovlist, user_ovlist, sizeof(ovlist)))
+		return -EFAULT;
+
+	if (ovlist.num_overlays != 1) {
+		pr_err("OV_PREPARE failed: only 1 overlay allowed\n");
+		return -EINVAL;
+	}
+
+	if (copy_from_user(req, ovlist.overlay_list[0], sizeof(*req)))
+		return -EFAULT;
+
+	rc = mdp3_overlay_set(mfd, req);
+	if (!IS_ERR_VALUE(rc)) {
+		if (copy_to_user(ovlist.overlay_list[0], req, sizeof(*req)))
+			return -EFAULT;
+	}
+
+	if (put_user(IS_ERR_VALUE(rc) ? 0 : 1,
+			&user_ovlist->processed_overlays))
+		return -EFAULT;
+
+	return rc;
+}
+
 static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 					u32 cmd, void __user *argp)
 {
@@ -1722,6 +1759,9 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 		if (rc)
 			pr_err("OVERLAY_PLAY failed (%d)\n", rc);
 		break;
+	case MSMFB_OVERLAY_PREPARE:
+		rc = mdp3_overlay_prepare(mfd, argp);
+		break;
 	case MSMFB_SELFTEST_RESULT_GET:
 		mutex_lock(&mdp3_session->lock);
 		val = panel->event_handler(panel, MDSS_EVENT_SELFTEST_RESULT_GET, NULL);
@@ -1733,7 +1773,7 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 		val = panel->event_handler(panel, MDSS_EVENT_SELFTEST_TE_PIN_STATUS_GET, NULL);
 		mutex_unlock(&mdp3_session->lock);
 		rc = copy_to_user(argp, &val, sizeof(val));
-		break;
+		break;	
 	default:
 		break;
 	}
