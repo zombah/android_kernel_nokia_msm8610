@@ -1,0 +1,16 @@
+&soc {
+    sms3130_spi_adapter: sms,sms3130_spi_adapter@f9926000{
+                compatible = "sms,sms3130_spi_adapter";
+		sms,spi_bus_num = <4>;
+		sms,spi_cs_num = <0>;
+		sms,spi_max_speed = <13000000>;
+		sms,spi_download_speed = <10000000>;
+		sms,vdd1_supply = "vdd1_dtv";
+		sms,vdd2_supply = "vdd2_dtv";
+		sms,rst_gpio = <90>;
+		sms,pow1_gpio = <91>;
+		sms,pow2_gpio = <92>;
+		sms,irq_gpio = <93>;
+
+    };
+};
