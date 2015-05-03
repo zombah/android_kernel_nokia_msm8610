@@ -1,6 +1,16 @@
 #Android makefile to build kernel as a part of Android Build
 PERL		= perl
 
+ifneq ($(USE_CCACHE),)
+	# Ccache enabled, enable also for kernel build. This reduces the total HLOS
+	# build time by roughly 30 % and system load by almost 40 % (best case
+	# scenario with fully populated cache).
+	export CCACHE := $(ANDROID_BUILD_TOP)/prebuilts/misc/linux-x86/ccache/ccache
+else
+	# Ccache disabled
+	export CCACHE :=
+endif
+
 ifeq ($(TARGET_PREBUILT_KERNEL),)
 
 KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
