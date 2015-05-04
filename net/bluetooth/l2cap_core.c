@@ -703,15 +703,17 @@ static void apply_fcs(struct sk_buff *skb)
 
 void l2cap_send_cmd(struct l2cap_conn *conn, u8 ident, u8 code, u16 len, void *data)
 {
-	struct sk_buff *skb = l2cap_build_cmd(conn, code, ident, len, data);
+	struct sk_buff *skb;
 	u8 flags;
 
 	BT_DBG("code 0x%2.2x", code);
 
-	if (!skb)
+	if (conn->hcon == NULL || conn->hcon->hdev == NULL)
 		return;
 
-	if (conn->hcon == NULL || conn->hcon->hdev == NULL)
+	skb = l2cap_build_cmd(conn, code, ident, len, data);
+
+	if (!skb)
 		return;
 
 	if (lmp_no_flush_capable(conn->hcon->hdev))
@@ -6127,6 +6129,7 @@ static int l2cap_ertm_rx_expected_iframe(struct sock *sk,
 		if (pi->sdu) {
 			BT_DBG("Unexpected start PDU during reassembly");
 			kfree_skb(pi->sdu);
+			pi->sdu = NULL;
 		}
 
 		pi->sdu_len = get_unaligned_le16(skb->data);
