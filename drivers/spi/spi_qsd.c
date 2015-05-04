@@ -1948,7 +1948,9 @@ static void msm_spi_process_message(struct msm_spi *dd)
 			msm_spi_process_transfer(dd);
 		}
 	}
+
 	return;
+
 error:
 	if (dd->cs_gpios[cs_num].valid) {
 		gpio_free(dd->cs_gpios[cs_num].gpio_num);
