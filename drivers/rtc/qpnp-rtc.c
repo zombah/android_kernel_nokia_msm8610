@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-13, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -102,6 +102,7 @@ qpnp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	int rc;
 	unsigned long secs, irq_flags;
 	u8 value[4], reg = 0, alarm_enabled = 0, ctrl_reg;
+	u8 rtc_disabled = 0, rtc_ctrl_reg;
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(dev);
 
 	rtc_tm_to_time(tm, &secs);
@@ -152,6 +153,22 @@ qpnp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	 * write operation
 	 */
 
+	/* Disable RTC H/w before writing on RTC register*/
+	rtc_ctrl_reg = rtc_dd->rtc_ctrl_reg;
+	if (rtc_ctrl_reg & BIT_RTC_ENABLE) {
+		rtc_disabled = 1;
+		rtc_ctrl_reg &= ~BIT_RTC_ENABLE;
+		rc = qpnp_write_wrapper(rtc_dd, &rtc_ctrl_reg,
+				rtc_dd->rtc_base + REG_OFFSET_RTC_CTRL, 1);
+		if (rc) {
+			dev_err(dev,
+				"Disabling of RTC control reg failed"
+					" with error:%d\n", rc);
+			goto rtc_rw_fail;
+		}
+		rtc_dd->rtc_ctrl_reg = rtc_ctrl_reg;
+	}
+
 	/* Clear WDATA[0] */
 	reg = 0x0;
 	rc = qpnp_write_wrapper(rtc_dd, &reg,
@@ -177,6 +194,20 @@ qpnp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 		goto rtc_rw_fail;
 	}
 
+	/* Enable RTC H/w after writing on RTC register*/
+	if (rtc_disabled) {
+		rtc_ctrl_reg |= BIT_RTC_ENABLE;
+		rc = qpnp_write_wrapper(rtc_dd, &rtc_ctrl_reg,
+				rtc_dd->rtc_base + REG_OFFSET_RTC_CTRL, 1);
+		if (rc) {
+			dev_err(dev,
+				"Enabling of RTC control reg failed"
+					" with error:%d\n", rc);
+			goto rtc_rw_fail;
+		}
+		rtc_dd->rtc_ctrl_reg = rtc_ctrl_reg;
+	}
+
 	if (alarm_enabled) {
 		ctrl_reg |= BIT_RTC_ALARM_ENABLE;
 		rc = qpnp_write_wrapper(rtc_dd, &ctrl_reg,
@@ -197,11 +228,10 @@ rtc_rw_fail:
 }
 
 static int
-qpnp_rtc_read_time(struct device *dev, struct rtc_time *tm)
+qpnp_rtc_read_time_seconds(struct device *dev, unsigned long *secs)
 {
 	int rc;
 	u8 value[4], reg;
-	unsigned long secs;
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(dev);
 
 	rc = qpnp_read_wrapper(rtc_dd, value,
@@ -232,8 +262,19 @@ qpnp_rtc_read_time(struct device *dev, struct rtc_time *tm)
 			return rc;
 		}
 	}
+	*secs = TO_SECS(value);
+	return 0;
+}
 
-	secs = TO_SECS(value);
+static int
+qpnp_rtc_read_time(struct device *dev, struct rtc_time *tm)
+{
+	int rc;
+	unsigned long secs;
+
+	rc = qpnp_rtc_read_time_seconds(dev, &secs);
+	if (rc)
+		return rc;
 
 	rtc_time_to_tm(secs, tm);
 
@@ -315,11 +356,10 @@ rtc_rw_fail:
 }
 
 static int
-qpnp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alarm)
+qpnp_rtc_read_alarm_seconds(struct device *dev, unsigned long *secs)
 {
 	int rc;
 	u8 value[4];
-	unsigned long secs;
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(dev);
 
 	rc = qpnp_read_wrapper(rtc_dd, value,
@@ -329,8 +369,20 @@ qpnp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 		dev_err(dev, "Read from ALARM reg failed\n");
 		return rc;
 	}
+	*secs = TO_SECS(value);
+	return 0;
+}
 
-	secs = TO_SECS(value);
+static int
+qpnp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alarm)
+{
+	int rc;
+	unsigned long secs;
+
+	rc = qpnp_rtc_read_alarm_seconds(dev, &secs);
+	if (rc)
+		return rc;
+
 	rtc_time_to_tm(secs, &alarm->time);
 
 	rc = rtc_valid_tm(&alarm->time);
@@ -347,6 +399,23 @@ qpnp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 	return 0;
 }
 
+static int
+qpnp_rtc_read_alarm_enabled(struct device *dev, int *enabled)
+{
+	int rc;
+	u8 ctrl_reg;
+	struct qpnp_rtc *rtc_dd = dev_get_drvdata(dev);
+
+	rc = qpnp_read_wrapper(rtc_dd, &ctrl_reg,
+				rtc_dd->alarm_base + REG_OFFSET_ALARM_CTRL1, 1);
+	if (rc) {
+		dev_err(dev, "Read from ALARM control reg failed\n");
+		return rc;
+	}
+
+	*enabled = ((ctrl_reg & BIT_RTC_ALARM_ENABLE) == BIT_RTC_ALARM_ENABLE);
+	return 0;
+}
 
 static int
 qpnp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
@@ -355,7 +424,6 @@ qpnp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 	unsigned long irq_flags;
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(dev);
 	u8 ctrl_reg;
-	u8 value[4] = {0};
 
 	spin_lock_irqsave(&rtc_dd->alarm_ctrl_lock, irq_flags);
 	ctrl_reg = rtc_dd->alarm_ctrl_reg1;
@@ -370,15 +438,7 @@ qpnp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 	}
 
 	rtc_dd->alarm_ctrl_reg1 = ctrl_reg;
-
-	/* Clear Alarm register */
-	if (!enabled) {
-		rc = qpnp_write_wrapper(rtc_dd, value,
-			rtc_dd->alarm_base + REG_OFFSET_ALARM_RW,
-			NUM_8_BIT_RTC_REGS);
-		if (rc)
-			dev_err(dev, "Clear ALARM value reg failed\n");
-	}
+	dev_dbg(dev, "Alarm: irq %s (0x%0x)\n", (enabled ? "enabled" : "disabled"), ctrl_reg);
 
 rtc_rw_fail:
 	spin_unlock_irqrestore(&rtc_dd->alarm_ctrl_lock, irq_flags);
@@ -430,6 +490,76 @@ static irqreturn_t qpnp_alarm_trigger(int irq, void *dev_id)
 rtc_alarm_handled:
 	return IRQ_HANDLED;
 }
+
+static void get_alarmtime_inpmic(struct device *dev,
+				unsigned long *pmic_alarm_time,
+				unsigned long *pmic_time,
+				int *enabled)
+{
+	int rc;
+
+	rc = qpnp_rtc_read_alarm_seconds(dev, pmic_alarm_time);
+	if (rc)
+		goto err;
+
+	rc = qpnp_rtc_read_time_seconds(dev, pmic_time);
+	if (rc)
+		goto err;
+
+	rc = qpnp_rtc_read_alarm_enabled(dev, enabled);
+	if (rc)
+		goto err;
+
+	return;
+err:
+	*pmic_alarm_time = 0;
+	*pmic_time = 0;
+	*enabled = 0;
+}
+
+static struct device *alarm_pmic_dev = NULL;
+
+static ssize_t alarm_time_inpmic_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	unsigned long pmic_time = 0, pmic_alarm_time = 0;
+	int enabled = 0;
+
+	get_alarmtime_inpmic(alarm_pmic_dev, &pmic_alarm_time, &pmic_time, &enabled);
+
+	sprintf(buf, "0x%lx,0x%lx,%d\n", pmic_alarm_time, pmic_time, enabled);
+	ret = strlen(buf) + 1;
+	return ret;
+}
+
+static DEVICE_ATTR(alarmtimeinpmic, 0440, alarm_time_inpmic_show, NULL);
+
+static struct kobject *android_alarm_kobj = NULL;
+
+static int alarm_sysfs_add(struct device *dev)
+{
+	int rc;
+	android_alarm_kobj = kobject_create_and_add("android_alarm", NULL);
+	if (android_alarm_kobj == NULL) {
+		dev_err(dev, "Alarm alarmtimeinpmic register failed\n");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	rc = sysfs_create_file(android_alarm_kobj, &dev_attr_alarmtimeinpmic.attr);
+	if (rc) {
+		dev_err(dev, "Alarm alarmtimeinpmic sysfs create file failed\n");
+		goto err_kobj;
+	}
+
+	return 0;
+err_kobj:
+	kobject_del(android_alarm_kobj);
+err:
+	return rc;
+}
+
 
 static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 {
@@ -565,6 +695,9 @@ static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 		goto fail_req_irq;
 	}
 
+	alarm_pmic_dev = &spmi->dev;
+	alarm_sysfs_add(alarm_pmic_dev);
+
 	device_init_wakeup(&spmi->dev, 1);
 	enable_irq_wake(rtc_dd->rtc_alarm_irq);
 
@@ -584,6 +717,7 @@ static int __devexit qpnp_rtc_remove(struct spmi_device *spmi)
 {
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(&spmi->dev);
 
+	kobject_del(android_alarm_kobj);
 	device_init_wakeup(&spmi->dev, 0);
 	free_irq(rtc_dd->rtc_alarm_irq, rtc_dd);
 	rtc_device_unregister(rtc_dd->rtc);
@@ -601,8 +735,8 @@ static void qpnp_rtc_shutdown(struct spmi_device *spmi)
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(&spmi->dev);
 	bool rtc_alarm_powerup = rtc_dd->rtc_alarm_powerup;
 
+	spin_lock_irqsave(&rtc_dd->alarm_ctrl_lock, irq_flags);
 	if (!rtc_alarm_powerup && !poweron_alarm) {
-		spin_lock_irqsave(&rtc_dd->alarm_ctrl_lock, irq_flags);
 		dev_dbg(&spmi->dev, "Disabling alarm interrupts\n");
 
 		/* Disable RTC alarms */
@@ -622,9 +756,29 @@ static void qpnp_rtc_shutdown(struct spmi_device *spmi)
 		if (rc)
 			dev_err(rtc_dd->rtc_dev, "SPMI write failed\n");
 
-fail_alarm_disable:
-		spin_unlock_irqrestore(&rtc_dd->alarm_ctrl_lock, irq_flags);
+	} else {
+		int enabled;
+
+		/*
+		 * In normal case, when power-on alarms are supported, we
+		 * clear alarm register only if alarm is not enabled. This
+		 * enabled charger application to read alarm time after reset.
+		 */
+		qpnp_rtc_read_alarm_enabled(&spmi->dev, &enabled);
+		if (!enabled) {
+			dev_dbg(rtc_dd->rtc_dev, "Alarm: clearing register for disabled alarm in %s\n", __func__);
+			rc = qpnp_write_wrapper(rtc_dd, value,
+				rtc_dd->alarm_base + REG_OFFSET_ALARM_RW,
+				NUM_8_BIT_RTC_REGS);
+			if (rc)
+				dev_err(rtc_dd->rtc_dev, "Clear ALARM value reg failed\n");
+		}
+
 	}
+
+fail_alarm_disable:
+	spin_unlock_irqrestore(&rtc_dd->alarm_ctrl_lock, irq_flags);
+
 }
 
 static struct of_device_id spmi_match_table[] = {

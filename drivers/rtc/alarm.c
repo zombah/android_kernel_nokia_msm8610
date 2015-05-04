@@ -74,6 +74,9 @@ static long power_on_alarm;
 static void alarm_shutdown(struct platform_device *dev);
 void set_power_on_alarm(long secs, bool enable)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&alarm_slock, flags);
 	if (enable) {
 		power_on_alarm = secs;
 	} else {
@@ -85,6 +88,7 @@ void set_power_on_alarm(long secs, bool enable)
 		else
 			power_on_alarm = 0;
 	}
+	spin_unlock_irqrestore(&alarm_slock, flags);
 	alarm_shutdown(NULL);
 }
 
