@@ -964,6 +964,7 @@ static struct clk_freq_tbl ftbl_gcc_sdcc1_2_apps_clk[] = {
 	F(   400000, gcc_xo, 12, 1,  4),
 	F( 20000000,  gpll0, 15, 1,  2),
 	F( 25000000,  gpll0, 12, 1,  2),
+	F( 47899152,  gpll0,  1,19,240),/* Nokia memory ARA HW request code*/
 	F( 50000000,  gpll0, 12, 0,  0),
 	F(100000000,  gpll0,  6, 0,  0),
 	F(200000000,  gpll0,  3, 0,  0),
@@ -1840,6 +1841,8 @@ static struct rcg_clk dsi_esc_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_mclk0_1_clk[] = {
+	F_MM(9600000, gcc_xo, 2, 0, 0),
+	F_MM(13000000, gpll0, 4, 13, 150),
 	F_MM(24000000, gpll0, 5, 1, 5),
 	F_MM(66670000, gpll0, 9, 0, 0),
 	F_END,
@@ -3032,15 +3035,22 @@ static struct clk_lookup msm_clocks_8610[] = {
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-007d"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006d"),
 	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "6-0078"),
-	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-0020"),
-	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006a"),
+	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "6-0020"),
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-0042"),
+    CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-0060"),
+    CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "6-0016"),
+    CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006a"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006f"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0034"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-007d"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006d"),
 	CLK_LOOKUP("cam_clk", mclk1_clk.c, "6-0078"),
-	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0020"),
-	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006a"),
+	CLK_LOOKUP("cam_clk", mclk1_clk.c, "6-0020"),
+	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0042"),
+	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0060"),
+	CLK_LOOKUP("cam_clk", mclk1_clk.c, "6-0016"),
+    CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006a"),
+
 
 
 	/* CSIPHY clocks */

@@ -41,17 +41,6 @@ static struct gpiomux_setting gpio_cam_i2c_config = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting gpio_nfc_config = {
-	.func = GPIOMUX_FUNC_2,
-	.drv  = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-static struct gpiomux_setting gpio_nfc_sus_config = {
-	.func = GPIOMUX_FUNC_2,
-	.drv  = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
 static struct gpiomux_setting atmel_int_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -151,41 +140,22 @@ static struct gpiomux_setting gpio_keys_suspend = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-/* define gpio used as interrupt input */
-static struct gpiomux_setting gpio_int_act_cfg = {
+static struct gpiomux_setting gpio_lra_vibra_setting = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-	.dir = GPIOMUX_IN,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_OUT_LOW,
 };
 
-static struct gpiomux_setting gpio_int_sus_cfg = {
+static struct gpiomux_setting not_connected_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-	.dir = GPIOMUX_IN,
-};
-
-static struct msm_gpiomux_config msm_gpio_int_configs[] __initdata = {
-	{
-		.gpio = 84,
-		.settings = {
-			[GPIOMUX_ACTIVE]	= &gpio_int_act_cfg,
-			[GPIOMUX_SUSPENDED]	= &gpio_int_sus_cfg,
-		},
-	},
+	.pull = GPIOMUX_PULL_DOWN,
 };
 
 static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	{
 		.gpio = 41,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
-			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
-		},
-	},
-	{
-		.gpio = 7,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
@@ -241,13 +211,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_cam_i2c_config,
 			[GPIOMUX_SUSPENDED] = &gpio_cam_i2c_config,
-		},
-	},
-	{
-		.gpio      = 78,	/* NFC CLK */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_nfc_config,
-			[GPIOMUX_SUSPENDED] = &gpio_nfc_sus_config,
 		},
 	},
 };
@@ -459,13 +422,6 @@ static struct gpiomux_setting accel_interrupt_config = {
 
 static struct msm_gpiomux_config msm_non_qrd_configs[] __initdata = {
 	{
-		.gpio = 8, /* CAM1_STANDBY_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
 		.gpio = 81,	/*ACCEL_INT1 */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &accel_interrupt_config,
@@ -504,27 +460,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 18, /* FLASH_LED_EN */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
-		.gpio = 19, /* FLASH_LED_NOW */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
-		.gpio = 8, /* CAM1_STANDBY_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
 		.gpio = 15, /* CAM1_RST_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
@@ -533,13 +468,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	},
 	{
 		.gpio = 20, /* WEBCAM1_STANDBY */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
-		.gpio = 21, /* WEBCAM2_RESET_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
@@ -555,42 +483,21 @@ static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
 		},
 	},
+};
+
+static struct msm_gpiomux_config msm_lra_vibra_configs[] __initdata = {
 	{
-		.gpio = 73,
+		.gpio = 92,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
+			[GPIOMUX_ACTIVE]    = &gpio_lra_vibra_setting,
+			[GPIOMUX_SUSPENDED] = &gpio_lra_vibra_setting,
 		},
 	},
 	{
-		.gpio = 74,
+		.gpio = 101,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
-		},
-	},
-};
-
-static struct gpiomux_setting sd_card_det_active_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_IN,
-};
-
-static struct gpiomux_setting sd_card_det_suspend_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-	.dir = GPIOMUX_IN,
-};
-
-static struct msm_gpiomux_config sd_card_det[] __initdata = {
-	{
-		.gpio = 42,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &sd_card_det_active_config,
-			[GPIOMUX_SUSPENDED] = &sd_card_det_suspend_config,
+			[GPIOMUX_ACTIVE]    = &gpio_lra_vibra_setting,
+			[GPIOMUX_SUSPENDED] = &gpio_lra_vibra_setting,
 		},
 	},
 };
@@ -644,6 +551,22 @@ static struct msm_gpiomux_config msm_interrupt_configs[] __initdata = {
 	},
 };
 
+/**
+ * 7 has incorrect value at bootup, so we init it here. Other non-
+ * connected GPIO pins (6, 7, 8, 9, 18, 19, 21, 39, 42, 55, 56, 57, 58, 59, 60,
+ * 61, 62, 66, 67, 70, 71, 73, 74, 75, 76, 77, 78, 79, 82, 83, 84, 85, 91, 94,
+ * 95, 96, 97, 98) have correct value at bootup so we let them untouched. 
+ */
+static struct msm_gpiomux_config msm_not_connected_configs[] __initdata = {
+	{
+		.gpio = 7,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &not_connected_cfg,
+			[GPIOMUX_SUSPENDED] = &not_connected_cfg,
+		},
+	},
+};
+
 void __init msm8610_init_gpiomux(void)
 {
 	int rc;
@@ -668,10 +591,10 @@ void __init msm8610_init_gpiomux(void)
 				ARRAY_SIZE(msm_lcd_configs));
 	msm_gpiomux_install(msm_keypad_configs,
 				ARRAY_SIZE(msm_keypad_configs));
-	msm_gpiomux_install(sd_card_det, ARRAY_SIZE(sd_card_det));
+	msm_gpiomux_install(msm_lra_vibra_configs, ARRAY_SIZE(msm_lra_vibra_configs));
+	msm_gpiomux_install(msm_not_connected_configs,
+			ARRAY_SIZE(msm_not_connected_configs));
 	msm_gpiomux_install(msm_sensor_configs, ARRAY_SIZE(msm_sensor_configs));
-	msm_gpiomux_install(msm_gpio_int_configs,
-			ARRAY_SIZE(msm_gpio_int_configs));
 	if (of_board_is_qrd()) {
 		msm_gpiomux_install(msm_interrupt_configs,
 			ARRAY_SIZE(msm_interrupt_configs));
