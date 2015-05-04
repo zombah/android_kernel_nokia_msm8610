@@ -600,7 +600,7 @@ static int dvb_frontend_thread(void *data)
 {
 	struct dvb_frontend *fe = data;
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
-	fe_status_t s;
+	fe_status_t s = 0;
 	enum dvbfe_algo algo;
 
 	bool re_tune = false;
@@ -1248,7 +1248,7 @@ static int dtv_property_process_get(struct dvb_frontend *fe,
 	switch(tvp->cmd) {
 	case DTV_ENUM_DELSYS:
 		ncaps = 0;
-		while (fe->ops.delsys[ncaps] && ncaps < MAX_DELSYS) {
+		while (ncaps < MAX_DELSYS && fe->ops.delsys[ncaps]) {
 			tvp->u.buffer.data[ncaps] = fe->ops.delsys[ncaps];
 			ncaps++;
 		}
@@ -1457,7 +1457,7 @@ static int set_delivery_system(struct dvb_frontend *fe, u32 desired_system)
 		 *	system.
 		 */
 		ncaps = 0;
-		while (fe->ops.delsys[ncaps] && ncaps < MAX_DELSYS) {
+		while (ncaps < MAX_DELSYS && fe->ops.delsys[ncaps]) {
 			if (fe->ops.delsys[ncaps] == desired_system) {
 				delsys = desired_system;
 				break;
@@ -1476,7 +1476,7 @@ static int set_delivery_system(struct dvb_frontend *fe, u32 desired_system)
 
 		/* Check if the desired delivery system is supported */
 		ncaps = 0;
-		while (fe->ops.delsys[ncaps] && ncaps < MAX_DELSYS) {
+		while (ncaps < MAX_DELSYS && fe->ops.delsys[ncaps]) {
 			if (fe->ops.delsys[ncaps] == desired_system) {
 				c->delivery_system = desired_system;
 				dprintk("%s() Changing delivery system to %d\n",
@@ -1504,7 +1504,7 @@ static int set_delivery_system(struct dvb_frontend *fe, u32 desired_system)
 		 * of the desired system
 		 */
 		ncaps = 0;
-		while (fe->ops.delsys[ncaps] && ncaps < MAX_DELSYS) {
+		while (ncaps < MAX_DELSYS && fe->ops.delsys[ncaps]) {
 			if ((dvbv3_type(fe->ops.delsys[ncaps]) == type) &&
 			    !is_dvbv3_delsys(fe->ops.delsys[ncaps]))
 				delsys = fe->ops.delsys[ncaps];

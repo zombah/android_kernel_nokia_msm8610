@@ -28,14 +28,29 @@ config DVB_DYNAMIC_MINORS
 
 	  If you are unsure about this, say N here.
 
+config DVB_CAPTURE_SMS3130
+	bool "DVB adapter siano SMS3130"
+	depends on DVB_CORE
+	default n
+	help
+	  If you say Y here, the DVB adapter will choose Siano SMS3130.
+
+	  If you are unsure about this, say N here.
+
 menuconfig DVB_CAPTURE_DRIVERS
 	bool "DVB/ATSC adapters"
 	depends on DVB_CORE
-	default y
+	default n
 	---help---
 	  Say Y to select Digital TV adapters
 
-if DVB_CAPTURE_DRIVERS && DVB_CORE
+if DVB_CORE && DVB_CAPTURE_SMS3130
+comment "Supported Siano SMS3130 adapters"
+	depends on DVB_CORE && DVB_CAPTURE_SMS3130
+source "drivers/media/dvb/siano/Kconfig"
+endif #DVB_CORE && DVB_CAPTURE_SMS3130
+
+if !DVB_CAPTURE_DRIVERS && DVB_CAPTURE_DRIVERS && DVB_CORE
 
 comment "Supported SAA7146 based PCI Adapters"
 	depends on DVB_CORE && PCI && I2C
