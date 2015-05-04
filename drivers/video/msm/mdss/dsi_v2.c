@@ -138,6 +138,18 @@ static int dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_PANEL_CLK_CTRL:
 		rc = dsi_clk_ctrl(pdata, (int)arg);
 		break;
+	case MDSS_EVENT_LOW_POWER_ON:
+		rc = mdss_dsi_panel_low_power_mode(pdata, 1);
+		break;
+	case MDSS_EVENT_LOW_POWER_OFF:
+		rc = mdss_dsi_panel_low_power_mode(pdata, 0);
+		break;
+	case MDSS_EVENT_SELFTEST_RESULT_GET:
+		rc = mdss_dsi_panel_selftest_read(pdata);
+		break;
+	case MDSS_EVENT_SELFTEST_TE_PIN_STATUS_GET:
+		rc = mdss_dsi_panel_te_pin_read(pdata);
+		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
