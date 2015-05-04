@@ -21,8 +21,10 @@
 #include <linux/leds.h>
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
+#include <linux/completion.h>
 
 #include "mdss_dsi.h"
+#include "mdp3.h"
 
 #define DT_CMD_HDR 6
 
@@ -109,6 +111,7 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	return 0;
 }
 
+
 static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds)
 {
@@ -127,6 +130,92 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	cmdreq.cb = NULL;
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+}
+static char sleep_out_cmd[2] = {0x11};
+static struct dsi_cmd_desc dcs_slp_out_cmd = {
+	{DTYPE_DCS_WRITE, 1, 0, 1, 5, sizeof(sleep_out_cmd)},
+	sleep_out_cmd
+};
+
+int mdss_dsi_panel_selftest_read(struct mdss_panel_data *pdata)
+{
+	struct mipi_panel_info *mipi;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct dsi_panel_cmds  sent_cmds;
+	char rval1[2] = {0, 0};
+	char rval2[2] = {0, 0};
+	int rc = 0;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+		}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+	mipi  = &pdata->panel_info.mipi;
+
+	mdss_dsi_panel_cmd_read(ctrl, 0x0f,0x00, NULL, rval1, 2);
+
+	sent_cmds.buf = NULL;
+	sent_cmds.blen = 0;
+	sent_cmds.cmds = &dcs_slp_out_cmd;
+	sent_cmds.cmd_cnt = 1;
+	sent_cmds.link_state = 0;
+
+	mdss_dsi_panel_cmds_send(ctrl, &sent_cmds);
+	
+	usleep(5 * 1000); /* selftest status is available 5ms after sleep out */
+
+	mdss_dsi_panel_cmd_read(ctrl, 0x0f,0x00, NULL, rval2, 2);
+	
+	if (rval1[0] == rval2[0])
+		rc = 1; /* if the register content didn't change, report failure.*/
+
+	return rc;
+}
+
+static DECLARE_COMPLETION(te_pin_completion);
+
+static irqreturn_t mdss_te_pin_irqhandler(int irq, void *ptr)
+{
+	complete(&te_pin_completion);
+
+	return IRQ_HANDLED;
+}
+
+int mdss_dsi_panel_te_pin_read(struct mdss_panel_data *pdata)
+{
+	int ret;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	ret = devm_request_irq(&mdp3_res->pdev->dev,
+			gpio_to_irq(ctrl->disp_te_gpio), mdss_te_pin_irqhandler,
+			IRQF_TRIGGER_RISING, "te-pin", ctrl);
+
+	if (ret) {
+		pr_err("%s: Failed to request TE pin irq\n", __func__);
+		return ret;
+	}
+
+	ret = wait_for_completion_killable_timeout(&te_pin_completion, HZ);
+
+	devm_free_irq(&mdp3_res->pdev->dev, gpio_to_irq(ctrl->disp_te_gpio), ctrl);
+
+	/*
+	 * Will return 0 if we received an TE pin IRQ, which means
+	 * test was PASS. If we did not receive IRQ in time, return
+	 * 1. Negative error code means some other error.
+	 */
+	return ret < 0 ? ret : !ret;
 }
 
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
@@ -152,7 +241,57 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
+static char low_power_mode_on[] = {0x39}; /* Idle mode on */
+static char low_power_mode_cabc_off[] = {0x55, 0x00}; /*CABC and CE off */
 
+static char low_power_mode_off[] = {0x38}; /* Idle mode off */
+static char low_power_mode_cabc_on[] = {0x55, 0x91}; /* CABC low, CE med  */
+
+static struct dsi_cmd_desc low_power_mode_enable_cmd[] = {
+	{{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(low_power_mode_on)}, low_power_mode_on},
+	{{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(low_power_mode_cabc_off)}, low_power_mode_cabc_off},
+};
+
+static struct dsi_cmd_desc low_power_mode_disable_cmd[] = {
+	{{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(low_power_mode_off)}, low_power_mode_off},
+	{{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(low_power_mode_cabc_on)}, low_power_mode_cabc_on},
+};
+
+int mdss_dsi_panel_low_power_mode(struct mdss_panel_data *pdata, int enable)
+{
+	struct mipi_panel_info *mipi;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct dcs_cmd_req cmdreq;
+	int rc = 0;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+		}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+	mipi  = &pdata->panel_info.mipi;
+
+	pr_debug("%s:-\n", __func__);
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+
+	if(enable)
+		cmdreq.cmds = low_power_mode_enable_cmd;
+	else
+		cmdreq.cmds = low_power_mode_disable_cmd;
+
+	cmdreq.cmds_cnt = 2;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq); /* also sends the data, cannot return failure */
+
+	return rc;
+}
+			
 void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;

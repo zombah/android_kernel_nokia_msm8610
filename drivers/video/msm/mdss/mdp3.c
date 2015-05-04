@@ -1011,12 +1011,13 @@ static int mdp3_parse_bootarg(struct platform_device *pdev)
 	char *panel_name;
 	struct mdss_panel_cfg *pan_cfg;
 	struct mdp3_hw_resource *mdata = platform_get_drvdata(pdev);
+	char id_str[7] = "0000000"; /* if no ID:s passed from LK, we print out 0:s*/
+	char *id_ptr = NULL;
 
 	mdata->pan_cfg.arg_cfg[MDSS_MAX_PANEL_LEN] = 0;
 	pan_cfg = &mdata->pan_cfg;
 	panel_name = &pan_cfg->arg_cfg[0];
 	intf_type = &pan_cfg->pan_intf;
-
 	/* reads from dt by default */
 	pan_cfg->lk_cfg = true;
 
@@ -1028,6 +1029,7 @@ static int mdp3_parse_bootarg(struct platform_device *pdev)
 	}
 
 	cmd_line = of_get_property(chosen_node, "bootargs", &len);
+	
 	if (!cmd_line || len <= 0) {
 		pr_err("%s: get bootargs failed\n", __func__);
 		rc = -ENODEV;
@@ -1051,10 +1053,11 @@ static int mdp3_parse_bootarg(struct platform_device *pdev)
 	end_idx = strnstr(disp_idx, " ", MDSS_MAX_PANEL_LEN);
 	pr_debug("%s:%d: pan_name=[%s] end=[%s]\n", __func__, __LINE__,
 		 disp_idx, end_idx);
+
 	if (!end_idx) {
 		end_idx = disp_idx + strlen(disp_idx) + 1;
 		pr_warn("%s:%d: pan_name=[%s] end=[%s]\n", __func__,
-		       __LINE__, disp_idx, end_idx);
+			   __LINE__, disp_idx, end_idx);
 	}
 
 	if (end_idx <= disp_idx) {
@@ -1066,6 +1069,12 @@ static int mdp3_parse_bootarg(struct platform_device *pdev)
 		goto get_dt_pan;
 	}
 
+	id_ptr = strnstr(end_idx, "id:", strlen(end_idx));
+
+	if (id_ptr){
+		strlcpy(id_str, id_ptr+3, 7); /* Offset 3 + id string is always 6 characters + end*/
+	}
+
 	*end_idx = 0;
 	len = end_idx - disp_idx + 1;
 	if (len <= 0) {
@@ -1075,7 +1084,9 @@ static int mdp3_parse_bootarg(struct platform_device *pdev)
 	}
 
 	strlcpy(panel_name, disp_idx, min(++len, MDSS_MAX_PANEL_LEN));
-	pr_debug("%s:%d panel:[%s]", __func__, __LINE__, panel_name);
+
+	/*Panel name and ID:s should always be printed out in engineering build*/
+	pr_err("%s:%d panel:[%s] disp ID:s 0x%c%c, 0x%c%c, 0x%c%c", __func__, __LINE__, panel_name, id_str[0], id_str[1], id_str[2], id_str[3], id_str[4], id_str[5]);
 	of_node_put(chosen_node);
 
 	rc = mdp3_get_pan_cfg(pan_cfg);

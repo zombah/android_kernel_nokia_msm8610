@@ -2140,10 +2140,13 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	int ret = -ENOSYS;
 	struct mdp_buf_sync buf_sync;
 	struct msm_sync_pt_data *sync_pt_data = NULL;
+	struct fb_event event;
+	int fbdata;
 	if (!info || !info->par)
 		return -EINVAL;
 	mfd = (struct msm_fb_data_type *)info->par;
 	mdss_fb_power_setting_idle(mfd);
+
 	if ((cmd != MSMFB_VSYNC_CTRL) && (cmd != MSMFB_OVERLAY_VSYNC_CTRL) &&
 			(cmd != MSMFB_ASYNC_BLIT) && (cmd != MSMFB_BLIT) &&
 			(cmd != MSMFB_NOTIFY_UPDATE)) {
@@ -2199,6 +2202,19 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 
 	default:
+		if (cmd == MSMFB_LOW_POWER_MODE_ON) {
+			fbdata = FB_BLANK_POWERDOWN;
+			event.data = &fbdata;
+			event.info = info;
+			(void)fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+		}
+		else if (cmd == MSMFB_LOW_POWER_MODE_OFF){
+			fbdata = FB_BLANK_UNBLANK;
+			event.data = &fbdata;
+			event.info = info;
+			(void)fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+		}
+
 		if (mfd->mdp.ioctl_handler)
 			ret = mfd->mdp.ioctl_handler(mfd, cmd, argp);
 		break;

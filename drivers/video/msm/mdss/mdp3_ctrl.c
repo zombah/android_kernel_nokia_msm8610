@@ -25,6 +25,8 @@
 #include "mdp3.h"
 #include "mdp3_ppp.h"
 
+extern void msm_dsi_op_mode_config(int mode, struct mdss_panel_data *pdata);
+
 #define VSYNC_EXPIRE_TICK	4
 
 static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd,
@@ -784,6 +786,7 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 
 	if (mfd->panel.type == MIPI_CMD_PANEL) {
 		rc = mdp3_ctrl_reset_cmd(mfd);
+		msm_dsi_op_mode_config(mfd->panel.type, mdp3_session->panel);
 		return rc;
 	}
 
@@ -1028,6 +1031,13 @@ static int mdp3_ctrl_display_commit_kickoff(struct msm_fb_data_type *mfd,
 		mutex_unlock(&mdp3_session->lock);
 		return -EPERM;
 	}
+
+	/*
+        * tx dcs command if had any
+        */
+
+	if (panel->event_handler)
+		 rc = panel->event_handler(panel, MDSS_EVENT_DSI_CMDLIST_KOFF, NULL);
 
 	mdp3_ctrl_notify(mdp3_session, MDP_NOTIFY_FRAME_BEGIN);
 	data = mdp3_bufq_pop(&mdp3_session->bufq_in);
@@ -1622,13 +1632,15 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 	struct msmfb_metadata metadata;
 	struct mdp_overlay *req = NULL;
 	struct msmfb_overlay_data ov_data;
+	struct mdss_panel_data *panel;
 	int val;
 
 	mdp3_session = (struct mdp3_session_data *)mfd->mdp.private1;
-	if (!mdp3_session)
+	if (!mdp3_session || !mdp3_session->panel || !mdp3_session->panel->event_handler)
 		return -ENODEV;
 
 	req = &mdp3_session->req_overlay;
+	panel = mdp3_session->panel;
 
 	if (!mdp3_session->status && cmd != MSMFB_METADATA_GET &&
 		cmd != MSMFB_HISTOGRAM_STOP) {
@@ -1702,6 +1714,16 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 		if (rc)
 			pr_err("OVERLAY_SET failed (%d)\n", rc);
 		break;
+	case MSMFB_LOW_POWER_MODE_ON:
+		mutex_lock(&mdp3_session->lock);
+		rc = panel->event_handler(panel, MDSS_EVENT_LOW_POWER_ON, NULL);
+		mutex_unlock(&mdp3_session->lock);
+		break;
+	case MSMFB_LOW_POWER_MODE_OFF:
+		mutex_lock(&mdp3_session->lock);
+		rc = panel->event_handler(panel, MDSS_EVENT_LOW_POWER_OFF, NULL);
+		mutex_unlock(&mdp3_session->lock);
+		break;
 	case MSMFB_OVERLAY_UNSET:
 		if (!IS_ERR_VALUE(copy_from_user(&val, argp, sizeof(val))))
 			rc = mdp3_overlay_unset(mfd, val);
@@ -1712,6 +1734,18 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 			rc = mdp3_overlay_play(mfd, &ov_data);
 		if (rc)
 			pr_err("OVERLAY_PLAY failed (%d)\n", rc);
+		break;
+	case MSMFB_SELFTEST_RESULT_GET:
+		mutex_lock(&mdp3_session->lock);
+		val = panel->event_handler(panel, MDSS_EVENT_SELFTEST_RESULT_GET, NULL);
+		mutex_unlock(&mdp3_session->lock);
+		rc = copy_to_user(argp, &val, sizeof(val));
+		break;
+	case MSMFB_SELFTEST_TE_PIN_STATUS_GET:
+		mutex_lock(&mdp3_session->lock);
+		val = panel->event_handler(panel, MDSS_EVENT_SELFTEST_TE_PIN_STATUS_GET, NULL);
+		mutex_unlock(&mdp3_session->lock);
+		rc = copy_to_user(argp, &val, sizeof(val));
 		break;
 	default:
 		break;
