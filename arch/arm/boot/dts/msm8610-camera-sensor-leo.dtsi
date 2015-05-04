@@ -1,0 +1,119 @@
+/*
+ * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/* &i2c_sensors and &i2c use different i2c, then set them in two sections. */
+&i2c_sensors {
+
+};
+
+
+&i2c {
+
+	eeprom6: qcom,eeprom@16 {
+		cell-index = <0>;
+		reg = <0x16 0x0>;
+		qcom,eeprom-name = "smiapp_eeprom";
+		compatible = "qcom,smiapp_eeprom";
+		qcom,slave-addr = <0x20>;
+		
+		cam_vdig-supply = <&pm8110_l14>;
+		cam_vana-supply = <&pm8110_l19>;
+		cam_vio-supply = <&pm8110_l14>;
+		cam_vaf-supply = <&pm8110_l14>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana",
+							 "cam_vaf";
+		qcom,cam-vreg-type = <0 1 0 1>;
+		qcom,cam-vreg-min-voltage = <1800000 0 2850000 0>;
+		qcom,cam-vreg-max-voltage = <1800000 0 2850000 0>;
+		qcom,cam-vreg-op-mode = <100000 0 200000 0>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 14 0>;
+		qcom,gpio-req-tbl-num = <0>;
+		qcom,gpio-req-tbl-flags = <1 >;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK";
+	        qcom,cam-power-seq-type = "sensor_vreg",
+			"sensor_vreg", "sensor_clk";
+		qcom,cam-power-seq-val = "cam_vana",
+			"cam_vdig", "sensor_cam_mclk";
+		qcom,cam-power-seq-cfg-val = <1 1 9600000>;
+		qcom,cam-power-seq-delay = <1 1 5>;
+
+	};
+
+    qcom,camera@20 {
+		compatible = "qcom,smia65pp";
+		reg = <0x20>;
+		qcom,slave-id = <0x20 0x0000 0x563A>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <90>;
+		qcom,sensor-name = "smia65pp";
+		cam_vdig-supply = <&pm8110_l14>;
+		cam_vana-supply = <&pm8110_l19>;
+		cam_vio-supply = <&pm8110_l14>;
+		cam_vaf-supply = <&pm8110_l14>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana",
+							 "cam_vaf";
+		qcom,cam-vreg-type = <0 1 0 1>;
+		qcom,cam-vreg-min-voltage = <1800000 0 2850000 0>;
+		qcom,cam-vreg-max-voltage = <1800000 0 2850000 0>;
+		qcom,cam-vreg-op-mode = <10000 0 100000 0>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 14 0>,
+                <&msmgpio 21 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+                                  "CAM_RESET";
+		qcom,csi-lane-assign = <0xe4>;
+		qcom,csi-lane-mask = <0x1>;
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <1>;
+		qcom,cci-master = <0>;
+	};
+
+    qcom,camera@60 {
+		compatible = "qcom,hm03d5";
+		reg = <0x60>;
+		qcom,slave-id = <0x60 0x0001 0x0357>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <270>;
+		qcom,sensor-name = "hm03d5";
+		cam_vdig-supply = <&pm8110_l14>;
+		cam_vana-supply = <&pm8110_l19>;
+		cam_vio-supply = <&pm8110_l14>;
+		cam_vaf-supply = <&pm8110_l14>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
+		qcom,cam-vreg-type = <0 1 0>;
+		qcom,cam-vreg-min-voltage = <1800000 0 2850000>;
+		qcom,cam-vreg-max-voltage = <1800000 0 2850000>;
+		qcom,cam-vreg-op-mode = <110000 0 90000>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 13 0>,
+                        <&msmgpio 15 0>;
+                qcom,gpio-reset = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+                                    "CAM_RESET";
+		qcom,csi-lane-assign = <0xe4>;
+		qcom,csi-lane-mask = <0x1>;
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <0>;
+		qcom,sensor-type = <1>;
+		qcom,cci-master = <0>;
+	};
+
+};
