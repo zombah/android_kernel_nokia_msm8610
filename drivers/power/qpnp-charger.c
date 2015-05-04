@@ -32,6 +32,9 @@
 #include <linux/qpnp-revid.h>
 #include <linux/android_alarm.h>
 #include <linux/spinlock.h>
+#ifdef	CONFIG_QPNP_SHUTDOWN_ON_BSI_LOST
+#include <linux/reboot.h>
+#endif
 
 /* Interrupt offsets */
 #define INT_RT_STS(base)			(base + 0x10)
@@ -1528,6 +1531,9 @@ qpnp_chg_bat_if_batt_pres_irq_handler(int irq, void *_chip)
 		if (batt_present) {
 			schedule_work(&chip->insertion_ocv_work);
 		} else {
+#ifdef	CONFIG_QPNP_SHUTDOWN_ON_BSI_LOST
+			emergency_restart();
+#endif
 			chip->insertion_ocv_uv = 0;
 			qpnp_chg_charge_en(chip, 0);
 		}
@@ -3137,8 +3143,13 @@ qpnp_eoc_work(struct work_struct *work)
 			}
 		}
 	} else {
-		pr_debug("not charging\n");
-		goto stop_eoc;
+		if ((chip->chg_done == false) && (!(batt_sts & BAT_FET_ON_IRQ))) {
+			pr_debug("BAT_FET_ON, but charging not finished check again later");
+			goto check_again_later;
+		} else {
+			pr_debug("not charging\n");
+			goto stop_eoc;
+		}
 	}
 
 check_again_later:
@@ -4646,6 +4657,12 @@ qpnp_charger_probe(struct spmi_device *spmi)
 
 	chip->insertion_ocv_uv = -EINVAL;
 	chip->batt_present = qpnp_chg_is_batt_present(chip);
+#ifdef	CONFIG_QPNP_SHUTDOWN_ON_BSI_LOST
+	if (! chip->batt_present) {
+		kernel_power_off();
+	}
+#endif
+
 	if (chip->bat_if_base) {
 		chip->batt_psy.name = "battery";
 		chip->batt_psy.type = POWER_SUPPLY_TYPE_BATTERY;
