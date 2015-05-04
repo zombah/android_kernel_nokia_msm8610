@@ -714,4 +714,40 @@ config SENSORS_CAPELLA_CM36283
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called CM36283.
+
+config SENSORS_KIONIX_ACC
+    tristate "Accelerometer"
+      depends on I2C
+      default Y
+      help
+        KIONIX accel sensor driver.
+
+config SENSORS_N2DM
+    tristate "Accelerometer"
+      depends on I2C
+      default Y
+      help
+        N2DM accel sensor driver.
+
+config SENSORS_BMA250
+    tristate "Accelerometer"
+      depends on I2C
+      default Y
+      help
+        BMA250 accel sensor driver.
+config SENSORS_APDS9930
+    tristate "Proximity-ALS"
+    depends on I2C
+    default Y
+    help
+      APDS9930 proximity & ambient light sensor driver.
+
+config SENSORS_BETAMON
+	tristate "Betamon proximity sensor"
+      depends on I2C
+      default Y
+      help
+        Betamon proximity sensor driver.	
+
 endif
+
