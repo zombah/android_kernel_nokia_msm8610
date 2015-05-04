@@ -62,21 +62,19 @@
 
 static int restart_mode;
 void *restart_reason;
+static int oem_panic_reason = NOKIA_PANIC_REASON_KERNEL; /* Default to AutoSMS code for kernel panic */
 
 int pmic_reset_irq;
 static void __iomem *msm_tmr0_base;
 
-#ifdef CONFIG_MSM_DLOAD_MODE
-static int in_panic;
-static void *dload_mode_addr;
-static bool dload_mode_enabled;
-static void *emergency_dload_mode_addr;
+void msm_set_oem_panic_reason(int oemreason)
+{
+	oem_panic_reason = oemreason & 0xff;
+}
+EXPORT_SYMBOL(msm_set_oem_panic_reason);
 
-/* Download mode master kill-switch */
-static int dload_set(const char *val, struct kernel_param *kp);
-static int download_mode = 1;
-module_param_call(download_mode, dload_set, param_get_int,
-			&download_mode, 0644);
+static int in_panic;
+
 static int panic_prep_restart(struct notifier_block *this,
 			      unsigned long event, void *ptr)
 {
@@ -87,6 +85,18 @@ static int panic_prep_restart(struct notifier_block *this,
 static struct notifier_block panic_blk = {
 	.notifier_call	= panic_prep_restart,
 };
+
+static void *emergency_dload_mode_addr;
+
+#ifdef CONFIG_MSM_DLOAD_MODE
+static void *dload_mode_addr;
+static bool dload_mode_enabled;
+
+/* Download mode master kill-switch */
+static int dload_set(const char *val, struct kernel_param *kp);
+static int download_mode = 1;
+module_param_call(download_mode, dload_set, param_get_int,
+			&download_mode, 0644);
 
 static void set_dload_mode(int on)
 {
@@ -102,21 +112,6 @@ static void set_dload_mode(int on)
 static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
-}
-
-static void enable_emergency_dload_mode(void)
-{
-	if (emergency_dload_mode_addr) {
-		__raw_writel(EMERGENCY_DLOAD_MAGIC1,
-				emergency_dload_mode_addr);
-		__raw_writel(EMERGENCY_DLOAD_MAGIC2,
-				emergency_dload_mode_addr +
-				sizeof(unsigned int));
-		__raw_writel(EMERGENCY_DLOAD_MAGIC3,
-				emergency_dload_mode_addr +
-				(2 * sizeof(unsigned int)));
-		mb();
-	}
 }
 
 static int dload_set(const char *val, struct kernel_param *kp)
@@ -142,16 +137,26 @@ static int dload_set(const char *val, struct kernel_param *kp)
 #else
 #define set_dload_mode(x) do {} while (0)
 
-static void enable_emergency_dload_mode(void)
-{
-	printk(KERN_ERR "dload mode is not enabled on target\n");
-}
-
 static bool get_dload_mode(void)
 {
 	return false;
 }
 #endif
+
+static void enable_emergency_dload_mode(void)
+{
+	if (emergency_dload_mode_addr) {
+		__raw_writel(EMERGENCY_DLOAD_MAGIC1,
+				emergency_dload_mode_addr);
+		__raw_writel(EMERGENCY_DLOAD_MAGIC2,
+				emergency_dload_mode_addr +
+				sizeof(unsigned int));
+		__raw_writel(EMERGENCY_DLOAD_MAGIC3,
+				emergency_dload_mode_addr +
+				(2 * sizeof(unsigned int)));
+		mb();
+	}
+}
 
 void msm_set_restart_mode(int mode)
 {
@@ -266,7 +271,7 @@ static void msm_restart_prepare(const char *cmd)
 	pm8xxx_reset_pwr_off(1);
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
+	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0') || in_panic)
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
@@ -285,6 +290,8 @@ static void msm_restart_prepare(const char *cmd)
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
+	} else if (in_panic) {
+		__raw_writel(0x6f656d00 | oem_panic_reason, restart_reason);
 	}
 
 	flush_cache_all();
@@ -347,11 +354,11 @@ late_initcall(msm_pmic_restart_init);
 
 static int __init msm_restart_init(void)
 {
-#ifdef CONFIG_MSM_DLOAD_MODE
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
-	dload_mode_addr = MSM_IMEM_BASE + DLOAD_MODE_ADDR;
 	emergency_dload_mode_addr = MSM_IMEM_BASE +
 		EMERGENCY_DLOAD_MODE_ADDR;
+#ifdef CONFIG_MSM_DLOAD_MODE
+	dload_mode_addr = MSM_IMEM_BASE + DLOAD_MODE_ADDR;
 	set_dload_mode(download_mode);
 #endif
 	msm_tmr0_base = msm_timer_get_timer0_base();

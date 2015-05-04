@@ -26,6 +26,11 @@ void fsm_restart(char mode, const char *cmd);
 #define msm_set_restart_mode(mode)
 #endif
 
+#define NOKIA_PANIC_REASON_KERNEL 0x2a
+#define NOKIA_PANIC_REASON_SUBSYS 0x2b
+
+void msm_set_oem_panic_reason(int oemreason);
+
 extern int pmic_reset_irq;
 
 #endif
