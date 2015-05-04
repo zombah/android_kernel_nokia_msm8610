@@ -2753,7 +2753,7 @@ static inline void hci_ev_radio_text(struct radio_hci_dev *hdev,
 
 	while ((skb->data[len+RDS_OFFSET] != 0x0d) && (len < MAX_RT_LENGTH))
 		len++;
-	data = kmalloc(len+RDS_OFFSET, GFP_ATOMIC);
+	data = kmalloc(len+RDS_OFFSET + 1, GFP_ATOMIC);
 	if (!data) {
 		FMDERR("Failed to allocate memory");
 		return;
