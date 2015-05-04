@@ -5314,6 +5314,8 @@ static int sysfs_slab_add(struct kmem_cache *s)
 	err = kobject_init_and_add(&s->kobj, &slab_ktype, NULL, name);
 	if (err) {
 		kobject_put(&s->kobj);
+		if (!unmergeable)
+			kfree(name);
 		return err;
 	}
 
@@ -5321,6 +5323,8 @@ static int sysfs_slab_add(struct kmem_cache *s)
 	if (err) {
 		kobject_del(&s->kobj);
 		kobject_put(&s->kobj);
+		if (!unmergeable)
+			kfree(name);
 		return err;
 	}
 	kobject_uevent(&s->kobj, KOBJ_ADD);
