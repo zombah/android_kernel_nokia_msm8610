@@ -130,4 +130,10 @@ config SSM
 	  This driver uses Secure Channel Manager interface for trustzone
 	  communication and communicates with modem over SMD channel.
 
+config LRA_VIBRATOR
+	tristate "LRA vibra support"
+	default n
+	help
+	  Provides an interface for LRA vibrator.
+
 endmenu
