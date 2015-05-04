@@ -881,7 +881,7 @@ static struct sk_buff *ncm_wrap_ntb(struct gether *port,
 				    struct sk_buff *skb)
 {
 	struct f_ncm	*ncm = func_to_ncm(&port->func);
-	struct sk_buff	*skb2;
+	struct sk_buff	*skb2 = NULL;
 	int		ncb_len = 0;
 	__le16		*tmp;
 	int		div = ntb_parameters.wNdpInDivisor;
@@ -973,7 +973,7 @@ static int ncm_unwrap_ntb(struct gether *port,
 	unsigned	index, index2;
 	unsigned	dg_len, dg_len2;
 	unsigned	ndp_len;
-	struct sk_buff	*skb2;
+	struct sk_buff	*skb2 = NULL;
 	int		ret = -EINVAL;
 	unsigned	max_size = le32_to_cpu(ntb_parameters.dwNtbOutMaxSize);
 	struct ndp_parser_opts *opts = ncm->parser_opts;
@@ -1094,6 +1094,10 @@ static int ncm_unwrap_ntb(struct gether *port,
 	return 0;
 err:
 	skb_queue_purge(list);
+	/*Fix leaked_storage: Variable "skb2" going out of scope leaks the storage it points to*/
+	if((skb!=skb2)&&(skb2!=NULL)){
+	  dev_kfree_skb_any(skb2);
+	} 
 	dev_kfree_skb_any(skb);
 	return ret;
 }

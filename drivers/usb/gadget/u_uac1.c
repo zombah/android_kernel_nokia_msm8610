@@ -263,7 +263,9 @@ static int capture_prepare_params(struct gaudio_snd_dev *snd)
 	snd->rate = params_rate(params);
 
 	runtime->frame_bits = snd_pcm_format_physical_width(runtime->format);
-
+	/*Fix the issue:Passing freed pointer "params" as an argument to function "pcm_buffer_size"*/
+	buffer_size = pcm_buffer_size(params);
+	period_size = pcm_period_size(params);
 	kfree(params);
 
 	swparams = kzalloc(sizeof(*swparams), GFP_KERNEL);
@@ -272,8 +274,6 @@ static int capture_prepare_params(struct gaudio_snd_dev *snd)
 		return -ENOMEM;
 	}
 
-	buffer_size = pcm_buffer_size(params);
-	period_size = pcm_period_size(params);
 	swparams->avail_min = period_size/2;
 	swparams->xfer_align = period_size/2;
 
