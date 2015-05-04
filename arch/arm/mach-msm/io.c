@@ -46,6 +46,9 @@
  * and should work as-is for any target without stacked memory.
  */
 phys_addr_t msm_shared_ram_phys = 0x00100000;
+#ifdef CONFIG_SBL_LOG
+phys_addr_t msm_sbl_ram_phys = 0x0de00000;
+#endif
 
 static void __init msm_map_io(struct map_desc *io_desc, int size)
 {
@@ -53,9 +56,14 @@ static void __init msm_map_io(struct map_desc *io_desc, int size)
 
 	BUG_ON(!size);
 	for (i = 0; i < size; i++)
+    {
 		if (io_desc[i].virtual == (unsigned long)MSM_SHARED_RAM_BASE)
 			io_desc[i].pfn = __phys_to_pfn(msm_shared_ram_phys);
-
+#ifdef CONFIG_SBL_LOG
+		if (io_desc[i].virtual == (unsigned long)MSM_SBL_RAM_BASE)
+			io_desc[i].pfn = __phys_to_pfn(msm_sbl_ram_phys);
+#endif
+    }
 	iotable_init(io_desc, size);
 }
 
@@ -165,6 +173,13 @@ static struct map_desc msm8x60_io_desc[] __initdata = {
 		.length =   MSM_SHARED_RAM_SIZE,
 		.type =     MT_DEVICE,
 	},
+#ifdef CONFIG_SBL_LOG
+	{
+		.virtual =  (unsigned long) MSM_SBL_RAM_BASE,
+		.length =   MSM_SBL_RAM_SIZE,
+		.type =     MT_DEVICE,
+	},
+#endif
 	MSM_DEVICE(QFPROM),
 };
 
@@ -613,6 +628,9 @@ static struct map_desc msm8610_io_desc[] __initdata = {
 void __init msm_map_msm8610_io(void)
 {
 	msm_shared_ram_phys = MSM8610_MSM_SHARED_RAM_PHYS;
+#ifdef CONFIG_SBL_LOG
+	msm_sbl_ram_phys = 0xde00000;
+#endif
 	msm_map_io(msm8610_io_desc, ARRAY_SIZE(msm8610_io_desc));
 	of_scan_flat_dt(msm_scan_dt_map_imem, NULL);
 }

@@ -76,7 +76,15 @@ $(KERNEL_OUT):
 	mkdir -p $(KERNEL_OUT)
 
 $(KERNEL_CONFIG): $(KERNEL_OUT)
-	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi- $(KERNEL_DEFCONFIG)
+	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm \
+		CROSS_COMPILE=arm-eabi- $(KERNEL_DEFCONFIG)
+ifneq ($(ENOSW_BUILD),)
+	@echo "Converting $(KERNEL_DEFCONFIG) for enosw"
+	echo 'CONFIG_ENO_SOFT=y' >> $@
+	echo 'CONFIG_SBL_LOG=y' >> $@
+	yes "" | $(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm \
+		CROSS_COMPILE=arm-eabi- oldconfig
+endif
 
 $(KERNEL_OUT)/piggy : $(TARGET_PREBUILT_INT_KERNEL)
 	$(hide) gunzip -c $(KERNEL_OUT)/arch/arm/boot/compressed/piggy.gzip > $(KERNEL_OUT)/piggy

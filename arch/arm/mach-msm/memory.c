@@ -372,7 +372,9 @@ mem_remove:
 		for (i = 0; i < (num_holes * 2); i += 2) {
 			memory_start = be32_to_cpu(memory_remove_prop[i]);
 			memory_size = be32_to_cpu(memory_remove_prop[i+1]);
-
+#ifdef CONFIG_SBL_LOG
+			memory_size += 0x100000;
+#endif
 			ret = memblock_remove(memory_start, memory_size);
 			if (ret)
 				WARN(1, "Failed to remove memory %x-%x\n",

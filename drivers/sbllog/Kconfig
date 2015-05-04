@@ -1,0 +1,15 @@
+#
+#SBL LOG virtual framework and drivers
+#
+menuconfig ENO_SOFT
+    bool "eno software support"
+	help
+	  ENO_SOFT is a build for factory
+
+if ENO_SOFT
+config SBL_LOG
+	bool "sbl log is kept in ram"
+    default:n
+	help
+      "sbl log is kept in ram intact"
+endif
