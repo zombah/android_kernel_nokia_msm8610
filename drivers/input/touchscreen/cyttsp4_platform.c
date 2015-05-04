@@ -1,0 +1,288 @@
+/*
+ * cyttsp4_platform.c
+ * Cypress TrueTouch(TM) Standard Product V4 Platform Module.
+ * For use with Cypress Txx4xx parts.
+ * Supported parts include:
+ * TMA4XX
+ * TMA1036
+ *
+ * Copyright (C) 2013 Cypress Semiconductor
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2, and only version 2, as published by the
+ * Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * Contact Cypress Semiconductor at www.cypress.com <ttdrivers@cypress.com>
+ *
+ */
+
+#include <linux/device.h>
+#include <linux/gpio.h>
+#include <linux/delay.h>
+
+/* cyttsp */
+#include <linux/cyttsp4_bus.h>
+#include <linux/cyttsp4_core.h>
+#include "cyttsp4_regs.h"
+
+#define TOUCH_SWITCH_EN 20
+
+#ifdef CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_PLATFORM_FW_UPGRADE
+#include "cyttsp4_img.h"
+static struct cyttsp4_touch_firmware cyttsp4_firmware = {
+	.img = cyttsp4_img,
+	.size = ARRAY_SIZE(cyttsp4_img),
+	.ver = cyttsp4_ver,
+	.vsize = ARRAY_SIZE(cyttsp4_ver),
+};
+#else
+static struct cyttsp4_touch_firmware cyttsp4_firmware = {
+	.img = NULL,
+	.size = 0,
+	.ver = NULL,
+	.vsize = 0,
+};
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_PLATFORM_TTCONFIG_UPGRADE
+#include "cyttsp4_params.h"
+static struct touch_settings cyttsp4_sett_param_regs = {
+	.data = (uint8_t *)&cyttsp4_param_regs[0],
+	.size = ARRAY_SIZE(cyttsp4_param_regs),
+	.tag = 0,
+};
+
+static struct touch_settings cyttsp4_sett_param_size = {
+	.data = (uint8_t *)&cyttsp4_param_size[0],
+	.size = ARRAY_SIZE(cyttsp4_param_size),
+	.tag = 0,
+};
+
+static struct cyttsp4_touch_config cyttsp4_ttconfig = {
+	.param_regs = &cyttsp4_sett_param_regs,
+	.param_size = &cyttsp4_sett_param_size,
+	.fw_ver = ttconfig_fw_ver,
+	.fw_vsize = ARRAY_SIZE(ttconfig_fw_ver),
+};
+#else
+static struct cyttsp4_touch_config cyttsp4_ttconfig = {
+	.param_regs = NULL,
+	.param_size = NULL,
+	.fw_ver = NULL,
+	.fw_vsize = 0,
+};
+#endif
+
+struct cyttsp4_loader_platform_data _cyttsp4_loader_platform_data = {
+	.fw = &cyttsp4_firmware,
+	.ttconfig = &cyttsp4_ttconfig,
+	.flags = CY_LOADER_FLAG_CALIBRATE_AFTER_FW_UPGRADE | CY_LOADER_FLAG_CHECK_TTCONFIG_VERSION,
+};
+
+int cyttsp4_xres(struct cyttsp4_core_platform_data *pdata,
+		struct device *dev)
+{
+	int rst_gpio = pdata->rst_gpio;
+	int rc = 0;
+
+	gpio_set_value(TOUCH_SWITCH_EN, 0);
+	msleep(10);
+	gpio_set_value(TOUCH_SWITCH_EN, 1);
+	msleep(5);
+	dev_info(dev, "%s: reset by Power Switch done, gpio=%d\n", __func__, TOUCH_SWITCH_EN);
+
+	gpio_set_value(rst_gpio, 0);
+	msleep(5);
+	gpio_set_value(rst_gpio, 1);
+	dev_info(dev,
+		"%s: reset by RESET pin done, gpio=%d\n", __func__, pdata->rst_gpio);
+
+	return rc;
+}
+
+int cyttsp4_init(struct cyttsp4_core_platform_data *pdata,
+		int on, struct device *dev)
+{
+	int rst_gpio = pdata->rst_gpio;
+	int irq_gpio = pdata->irq_gpio;
+	int rc = 0;
+
+	if (on) {
+	    /* config gpio 20 for TOUCH_SWITCH_EN */
+		rc = gpio_request(TOUCH_SWITCH_EN, NULL);
+		if (rc < 0) {
+    		dev_err(dev,
+    				"%s: Fail request gpio=%d\n", __func__,
+    				TOUCH_SWITCH_EN);
+			gpio_free(TOUCH_SWITCH_EN);
+		} else {
+			rc = gpio_direction_output(TOUCH_SWITCH_EN, 1);
+			if (rc < 0) {
+				dev_err(dev,"%s: Fail set output gpio=%d\n",
+					__func__, TOUCH_SWITCH_EN);
+				gpio_free(TOUCH_SWITCH_EN);
+			} else {
+                gpio_set_value(TOUCH_SWITCH_EN, 1);
+            	dev_info(dev,
+            		"%s: TOUCH_SWITCH_EN gpio=%d, value=%d, rc=%d\n", __func__,
+            		TOUCH_SWITCH_EN, 1, rc);                
+			}
+		}
+
+		rc = gpio_request(rst_gpio, NULL);
+		if (rc < 0) {
+			gpio_free(rst_gpio);
+			rc = gpio_request(rst_gpio, NULL);
+		}
+		if (rc < 0) {
+			dev_err(dev,
+				"%s: Fail request gpio=%d\n", __func__,
+				rst_gpio);
+		} else {
+			rc = gpio_direction_output(rst_gpio, 1);
+			if (rc < 0) {
+				dev_err(dev,"%s: Fail set output gpio=%d\n",
+					__func__, rst_gpio);
+				gpio_free(rst_gpio);
+			} else {
+				rc = gpio_request(irq_gpio, NULL);
+				if (rc < 0) {
+					gpio_free(irq_gpio);
+					rc = gpio_request(irq_gpio,
+						NULL);
+				}
+				if (rc < 0) {
+					dev_err(dev,
+						"%s: Fail request gpio=%d\n",
+						__func__, irq_gpio);
+					gpio_free(irq_gpio);
+				} else {
+					gpio_direction_input(irq_gpio);
+				}
+			}
+		}
+	} else {
+		gpio_free(rst_gpio);
+		gpio_free(irq_gpio);
+	}
+
+	dev_info(dev,
+		"%s: INIT CYTTSP RST gpio=%d and IRQ gpio=%d r=%d\n",
+		__func__, rst_gpio, irq_gpio, rc);
+	return rc;
+}
+
+int cyttsp4_power(struct cyttsp4_core_platform_data *pdata,
+		int on, struct device *dev, atomic_t *ignore_irq)
+{
+	int irq_gpio = pdata->irq_gpio;
+	int rst_gpio = pdata->rst_gpio;
+	int rc = 0;
+
+	switch(on) {
+	case CY_POWER_ON:
+		dev_info(dev, "%s: power ON\n", __func__);
+
+		rc = gpio_direction_output(rst_gpio, 1);
+		if (rc < 0) {
+			dev_err(dev,"%s: Fail set output HIGH, gpio=%d\n",
+				__func__, rst_gpio);
+			gpio_free(rst_gpio);
+		} else {
+			dev_info(dev, "%s: OK set output HIGH, gpio=%d\n",
+				__func__, rst_gpio);
+		}
+		break;
+
+	case CY_POWER_OFF:
+		dev_info(dev, "%s: power OFF by Power Switch\n", __func__);
+
+		rc = gpio_direction_output(rst_gpio, 0);
+		if (rc < 0) {
+			dev_err(dev,"%s: Fail set output LOW, gpio=%d\n",
+				__func__, rst_gpio);
+			gpio_free(rst_gpio);
+		} else {
+			dev_info(dev,"%s: OK set output LOW, gpio=%d\n",
+				__func__, rst_gpio);
+		}
+
+		if (ignore_irq)
+			atomic_set(ignore_irq, 1);
+		gpio_set_value(TOUCH_SWITCH_EN, 0);
+		msleep(10);
+		break;
+
+	case CY_POWER_WAKEUP:
+		dev_info(dev, "%s: wake up by IRQ\n", __func__);
+
+		if (ignore_irq)
+			atomic_set(ignore_irq, 1);
+
+		rc = gpio_direction_output(irq_gpio, 0);
+		if (rc < 0) {
+			if (ignore_irq)
+				atomic_set(ignore_irq, 0);
+			dev_err(dev,
+				"%s: Fail set output gpio=%d\n",
+				__func__, irq_gpio);
+		} else {
+			udelay(2000);
+			rc = gpio_direction_input(irq_gpio);
+			if (ignore_irq)
+				atomic_set(ignore_irq, 0);
+			if (rc < 0) {
+				dev_err(dev,
+					"%s: Fail set input gpio=%d\n",
+					__func__, irq_gpio);
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return rc;
+}
+
+int cyttsp4_irq_stat(struct cyttsp4_core_platform_data *pdata,
+		struct device *dev)
+{
+	return gpio_get_value(pdata->irq_gpio);
+}
+
+#ifdef CYTTSP4_DETECT_HW
+int cyttsp4_detect(struct cyttsp4_core_platform_data *pdata,
+		struct device *dev, cyttsp4_platform_read read)
+{
+	int retry = 3;
+	int rc;
+	char buf[1];
+
+	while (retry--) {
+		/* Perform reset, wait for 100 ms and perform read */
+		dev_vdbg(dev, "%s: Performing a reset\n", __func__);
+		pdata->xres(pdata, dev);
+		msleep(100);
+		rc = read(dev, 0, buf, 1);
+		if (!rc)
+			return 0;
+
+		dev_vdbg(dev, "%s: Read unsuccessful, try=%d\n",
+			__func__, 3 - retry);
+	}
+
+	return rc;
+}
+#endif
