@@ -14,8 +14,7 @@
 
 /include/ "msm8610-v2.dtsi"
 /include/ "msm8610-cdp.dtsi"
-/include/ "msm8610-camera-sensor-cdp-mtp.dtsi"
-
+/include/ "msm8610-camera-sensor-ara.dtsi"
 / {
 	model = "Qualcomm MSM 8610v2 CDP";
 	compatible = "qcom,msm8610-cdp", "qcom,msm8610", "qcom,cdp";
