@@ -57,17 +57,24 @@
 			#size-cells = <1>;
 			status = "disabled";
 
-			qcom,vddmax-mv = <4200>;
-			qcom,vddsafe-mv = <4230>;
+			qcom,vddmax-mv = <4340>;
+			qcom,vddsafe-mv = <4340>;
 			qcom,vinmin-mv = <4300>;
-			qcom,vbatdet-mv = <4100>;
-			qcom,ibatmax-ma = <1500>;
-			qcom,ibatterm-ma = <100>;
-			qcom,ibatsafe-ma = <1500>;
-			qcom,thermal-mitigation = <1500 700 600 325>;
+			qcom,ibatmax-ma = <900>;
+			qcom,ibatterm-ma = <150>;
+			qcom,ibatsafe-ma = <900>;
+			qcom,thermal-mitigation = <900 700 600 325>;
+			qcom,cool-bat-decidegc = <100>;
+			qcom,cool-bat-mv = <4240>;
+			qcom,ibatmax-warm-ma = <900>;
+			qcom,warm-bat-decidegc = <450>;
+			qcom,batt-hot-percentage = <25>;
+			qcom,batt-cold-percentage = <70>;
+			qcom,warm-bat-mv = <4240>;
+			qcom,ibatmax-cool-ma = <900>;
 			qcom,vbatdet-delta-mv = <100>;
-			qcom,resume-soc = <99>;
-			qcom,tchg-mins = <150>;
+			qcom,tchg-mins = <240>;
+			qcom,bpd-detection = "bpd_id";
 			qcom,chg-vadc = <&pm8110_vadc>;
 			qcom,chg-adc_tm = <&pm8110_adc_tm>;
 
@@ -313,17 +320,18 @@
 
 			qcom,r-sense-uohm = <10000>;
 			qcom,v-cutoff-uv = <3400000>;
-			qcom,max-voltage-uv = <4200000>;
+			qcom,max-voltage-uv = <4340000>;
 			qcom,r-conn-mohm = <0>;
+			qcom,batt-temp-threshold = <760>;
 			qcom,shutdown-soc-valid-limit = <100>;
 			qcom,adjust-soc-low-threshold = <15>;
 			qcom,ocv-voltage-high-threshold-uv = <3750000>;
-			qcom,ocv-voltage-low-threshold-uv = <3650000>;
+			qcom,ocv-voltage-low-threshold-uv = <3700000>;
 			qcom,low-soc-calculate-soc-threshold = <15>;
 			qcom,low-voltage-calculate-soc-ms = <1000>;
 			qcom,low-soc-calculate-soc-ms = <5000>;
 			qcom,calculate-soc-ms = <20000>;
-			qcom,chg-term-ua = <100000>;
+			qcom,chg-term-ua = <150000>;
 			qcom,batt-type = <0>;
 			qcom,low-voltage-threshold = <3420000>;
 			qcom,tm-temp-margin = <5000>;
@@ -366,7 +374,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			qcom,qpnp-rtc-write = <0>;
-			qcom,qpnp-rtc-alarm-pwrup = <0>;
+			qcom,qpnp-rtc-alarm-pwrup = <1>;
 
 			qcom,pm8110_rtc_rw@6000 {
 				reg = <0x6000 0x100>;

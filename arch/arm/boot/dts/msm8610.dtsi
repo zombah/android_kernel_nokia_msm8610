@@ -327,12 +327,12 @@
 		qcom,vdd-io-voltage-level = <1800000 2950000>;
 		qcom,vdd-io-current-level = <9000 50000>;
 
-		qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-		qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-		qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
-		qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+		qcom,pad-pull-on = <0x0 0x0 0x0>; /* no-pull, no-pull, no-pull */
+		qcom,pad-pull-off = <0x0 0x0 0x0>; /* no-pull, no-pull, no-pull */
+		qcom,pad-drv-on = <0x1 0x1 0x1>; /* Nokia memory ARA product HW request code 4mA, 4mA, 4mA */
+		qcom,pad-drv-off = <0x0 0x0 0x0>; /* Nokia memory ARA product HW request code 2mA, 2mA, 2mA */
 
-		qcom,clk-rates = <400000 25000000 50000000 100000000 200000000>;
+		qcom,clk-rates = <400000 25000000 47899152 100000000 200000000>;/* Nokia memory ARA product HW request code */
 		qcom,sup-voltages = <2950 2950>;
 		qcom,bus-width = <4>;
 		qcom,xpc;
@@ -451,7 +451,8 @@
 
 	qcom,msm-mem-hole {
 		compatible = "qcom,msm-mem-hole";
-		qcom,memblock-remove = <0x08800000 0x5600000>; /* Address and Size of Hole */
+                qcom,memblock-remove = <0x08800000 0x2f00000 
+                                        0x0c500000 0x1900000>; /* Address and Size of Hole */ 
 	};
 
 	qcom,wdt@f9017000 {
@@ -521,7 +522,7 @@
 		reg = <0xf9923000 0x1000>;
 		interrupt-names = "qup_err_intr";
 		interrupts = <0 95 0>;
-		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <19200000>;
 		qcom,sda-gpio = <&msmgpio 2 0>;
 		qcom,scl-gpio = <&msmgpio 3 0>;
@@ -551,7 +552,7 @@
 		reg = <0xf9928000 0x1000>;
 		interrupt-names = "qup_err_intr";
 		interrupts = <0 100 0>;
-		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <19200000>;
 		qcom,sda-gpio = <&msmgpio 16 0>;
 		qcom,scl-gpio = <&msmgpio 17 0>;
@@ -575,7 +576,7 @@
 		qcom,master-id = <86>;
 	};
 
-	i2c@f9925000 { /* BLSP-1 QUP-3 */
+	i2c_sensors: i2c@f9925000 { /* BLSP-1 QUP-3 */
 		cell-index = <0>;
 		compatible = "qcom,i2c-qup";
 		#address-cells = <1>;
@@ -584,7 +585,7 @@
 		reg = <0xf9925000 0x1000>;
 		interrupt-names = "qup_err_intr";
 		interrupts = <0 97 0>;
-		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-bus-freq = <400000>;
                 qcom,i2c-src-freq = <19200000>;
                 qcom,sda-gpio = <&msmgpio 10 0>;
                 qcom,scl-gpio = <&msmgpio 11 0>;
@@ -639,9 +640,16 @@
 		compatible = "qcom,iris_fm";
 	};
 
+	qcom,lravibra {
+		compatible = "qcom,lravibra";
+		qcom,vibrator-amp-gpio = <&msmgpio 101 0x0>;
+		qcom,vibrator-control-gpio = <&msmgpio 92 0x0>;
+	};
+    
 	sound {
 		compatible = "qcom,msm8x10-audio-codec";
 		qcom,model = "msm8x10-snd-card";
+		qcom,vibrator-amp-gpio = <&msmgpio 101 0x0>;
 	};
 
 	qti,msm-pcm {
@@ -1126,6 +1134,17 @@
 	chan@31 {
 		label = "batt_id";
 		reg = <0x31>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@36 {
+		label = "hw_id";
+		reg = <0x36>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
 		qcom,calibration-type = "ratiometric";

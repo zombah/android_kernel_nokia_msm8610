@@ -233,9 +233,10 @@
 	rpm-regulator-ldoa7 {
 		status = "okay";
 		pm8110_l7: regulator-l7 {
-			regulator-min-microvolt = <2050000>;
-			regulator-max-microvolt = <2050000>;
-			qcom,init-voltage = <2050000>;
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			qcom,init-voltage = <1200000>;
+			qcom,consumer-supplies = "vdd1_dtv", "";
 			status = "okay";
 		};
 	};
@@ -384,8 +385,9 @@
 		status = "okay";
 		pm8110_l22: regulator-l22 {
 			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <3300000>;
-			qcom,init-voltage = <3300000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage = <1800000>;
+			qcom,consumer-supplies = "vdd2_dtv", "";
 			status = "okay";
 		};
 	};
