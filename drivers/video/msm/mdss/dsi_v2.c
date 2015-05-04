@@ -66,6 +66,7 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 	if (enable) {
 		dsi_ctrl_gpio_request(ctrl_pdata);
 		mdss_dsi_panel_reset(pdata, 1);
+		//msleep(150);
 		rc = ctrl_pdata->on(pdata);
 		if (rc)
 			pr_err("dsi_panel_handler panel on failed %d\n", rc);
@@ -135,6 +136,18 @@ static int dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_PANEL_CLK_CTRL:
 		rc = dsi_clk_ctrl(pdata, (int)arg);
+		break;
+	case MDSS_EVENT_LOW_POWER_ON:
+		rc = mdss_dsi_panel_low_power_mode(pdata, 1);
+		break;
+	case MDSS_EVENT_LOW_POWER_OFF:
+		rc = mdss_dsi_panel_low_power_mode(pdata, 0);
+		break;
+	case MDSS_EVENT_SELFTEST_RESULT_GET:
+		rc = mdss_dsi_panel_selftest_read(pdata);
+		break;
+	case MDSS_EVENT_SELFTEST_TE_PIN_STATUS_GET:
+		rc = mdss_dsi_panel_te_pin_read(pdata);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);

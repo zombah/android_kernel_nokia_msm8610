@@ -26,6 +26,7 @@
 #include "dsi_io_v2.h"
 #include "dsi_host_v2.h"
 #include "mdss_debug.h"
+#include "mdp3.h"
 
 #define DSI_POLL_SLEEP_US 1000
 #define DSI_POLL_TIMEOUT_US 16000
