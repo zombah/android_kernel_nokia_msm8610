@@ -74,6 +74,10 @@
 #include "f_ccid.c"
 #include "f_mtp.c"
 #include "f_accessory.c"
+#ifdef CONFIG_PHONET
+#define USB_WINUSB_PHONET
+#include "f_winusb_phonet.c"
+#endif
 #define USB_ETH_RNDIS y
 #include "f_rndis.c"
 #include "rndis.c"
@@ -2014,6 +2018,38 @@ static struct android_usb_function uasp_function = {
 	.cleanup	= uasp_function_cleanup,
 	.bind_config	= uasp_function_bind_config,
 };
+#ifdef USB_WINUSB_PHONET
+static int winusb_phonet_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev)
+{
+	return winusb_phonet_setup(cdev->gadget);
+}
+
+static void winusb_phonet_function_cleanup(struct android_usb_function *f)
+{
+	winusb_phonet_cleanup();
+}
+
+static int winusb_phonet_function_bind_config(struct android_usb_function *f, struct usb_configuration *c)
+{
+	return winusb_phonet_bind_config(c);
+}
+
+static int winusb_phonet_function_ctrlrequest(struct android_usb_function *f,
+						struct usb_composite_dev *cdev,
+						const struct usb_ctrlrequest *c)
+{
+	return winusb_phonet_ctrlrequest(cdev, c);
+}
+
+
+static struct android_usb_function winusb_phonet_function = {
+	.name		= "winusb_phonet",
+	.init		= winusb_phonet_function_init,
+	.cleanup	= winusb_phonet_function_cleanup,
+	.bind_config	= winusb_phonet_function_bind_config,
+	.ctrlrequest	= winusb_phonet_function_ctrlrequest,
+};
+#endif
 
 static struct android_usb_function *supported_functions[] = {
 	&mbim_function,
@@ -2032,6 +2068,9 @@ static struct android_usb_function *supported_functions[] = {
 	&adb_function,
 	&ccid_function,
 	&acm_function,
+#ifdef USB_WINUSB_PHONET
+	&winusb_phonet_function,
+#endif
 	&mtp_function,
 	&ptp_function,
 	&rndis_function,
