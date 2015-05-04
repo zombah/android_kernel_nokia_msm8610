@@ -306,7 +306,8 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 	if (best_node == NULL) {
 		pr_err("No battery data found\n");
 		return -ENODATA;
-	}
+	} else
+		pr_info("Using %d kohm as battery id best match\n", best_id_kohm);
 
 	return of_batterydata_load_battery_data(best_node,
 					best_id_kohm, batt_data);
