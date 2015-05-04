@@ -41,7 +41,7 @@
 #define EXT_CLASS_D_DELAY_DELTA 2000
 
 #define CDC_EXT_CLK_RATE 9600000
-#define WCD9XXX_MBHC_DEF_BUTTONS 8
+#define WCD9XXX_MBHC_DEF_BUTTONS 3
 #define WCD9XXX_MBHC_DEF_RLOADS 5
 
 static int msm_btsco_rate = BTSCO_RATE_8KHZ;
@@ -50,6 +50,10 @@ static int msm_btsco_ch = 1;
 static int msm_proxy_rx_ch = 2;
 static struct platform_device *spdev;
 static int ext_spk_amp_gpio = -1;
+
+/* Vibrator AMP control */
+static int vibrator_amp_gpio = -1;
+static int vibrator_amp_state = 0;
 
 /* pointers for digital codec register mappings */
 static void __iomem *pcbcr;
@@ -302,6 +306,11 @@ static const struct soc_enum msm_btsco_enum[] = {
 static const char *const sec_mi2s_rx_ch_text[] = {"One", "Two"};
 static const char *const pri_mi2s_tx_ch_text[] = {"One", "Two"};
 
+static const char *const vibrator_amp_control_text[] = {"Off", "On"};
+static const struct soc_enum msm_vibrator_amp_control_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, vibrator_amp_control_text),
+};
+
 static int msm_btsco_rate_get(struct snd_kcontrol *kcontrol,
 			      struct snd_ctl_elem_value *ucontrol)
 {
@@ -365,6 +374,48 @@ static int msm_pri_mi2s_tx_ch_put(struct snd_kcontrol *kcontrol,
 
 	pr_debug("%s: msm_pri_mi2s_tx_ch = %d\n", __func__, msm_pri_mi2s_tx_ch);
 	return 1;
+}
+
+static int msm_vibrator_amp_control_init(void)
+{
+    vibrator_amp_gpio = of_get_named_gpio(spdev->dev.of_node,
+        "qcom,vibrator-amp-gpio", 0);
+    if (vibrator_amp_gpio <= 0) {
+        pr_err("%s: vibrator_amp_gpio <= 0", __func__);
+    }
+    return 0;
+}
+
+static int msm_vibrator_amp_control_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: vibrator_amp_state  = %d", __func__, vibrator_amp_state);
+	ucontrol->value.integer.value[0] = vibrator_amp_state;
+	return 0;
+}
+
+static int msm_vibrator_amp_control_put(struct snd_kcontrol *kcontrol,
+    struct snd_ctl_elem_value *ucontrol)
+{
+    int ret = 0;
+
+    if( vibrator_amp_gpio >= 0 ) {
+        vibrator_amp_state = ucontrol->value.integer.value[0];
+        if (vibrator_amp_state == 1) {
+            ret = gpio_request(vibrator_amp_gpio, "vibrator_amp_gpio");
+            if (ret) {
+                pr_err("%s: gpio_request failed for vibrator_amp_gpio.\n",
+                __func__);
+                return -EINVAL;
+            }
+            gpio_set_value(vibrator_amp_gpio, vibrator_amp_state);
+        }
+        else {
+            gpio_set_value(vibrator_amp_gpio, vibrator_amp_state);
+            gpio_free(vibrator_amp_gpio);
+        }
+    }
+    return 0;
 }
 
 static int msm_btsco_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
@@ -517,6 +568,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_sec_mi2s_rx_ch_get, msm_sec_mi2s_rx_ch_put),
 	SOC_ENUM_EXT("MI2S_TX Channels", msm_snd_enum[1],
 			msm_pri_mi2s_tx_ch_get, msm_pri_mi2s_tx_ch_put),
+	SOC_ENUM_EXT("Vibrator AMP Control", msm_vibrator_amp_control_enum[0],
+			msm_vibrator_amp_control_get, msm_vibrator_amp_control_put),
 };
 
 static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
@@ -552,6 +605,8 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 					 ARRAY_SIZE(msm_snd_controls));
 	if (ret < 0)
 		return ret;
+
+	msm_vibrator_amp_control_init();
 
 exit:
 	if (gpio_is_valid(ext_spk_amp_gpio))
@@ -611,21 +666,11 @@ static void *def_msm8x10_wcd_mbhc_cal(void)
 	btn_high = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg,
 					       MBHC_BTN_DET_V_BTN_HIGH);
 	btn_low[0] = -50;
-	btn_high[0] = 20;
-	btn_low[1] = 21;
-	btn_high[1] = 61;
-	btn_low[2] = 62;
-	btn_high[2] = 104;
-	btn_low[3] = 105;
-	btn_high[3] = 148;
-	btn_low[4] = 149;
-	btn_high[4] = 189;
-	btn_low[5] = 190;
-	btn_high[5] = 228;
-	btn_low[6] = 229;
-	btn_high[6] = 269;
-	btn_low[7] = 270;
-	btn_high[7] = 500;
+	btn_high[0] = 77;
+	btn_low[1] = 78;
+	btn_high[1] = 450;
+	btn_low[2] = 451;
+	btn_high[2] = 650;
 	n_ready = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg, MBHC_BTN_DET_N_READY);
 	n_ready[0] = 80;
 	n_ready[1] = 68;
@@ -1114,6 +1159,8 @@ static int __devexit msm8x10_asoc_machine_remove(struct platform_device *pdev)
 
 	if (gpio_is_valid(ext_spk_amp_gpio))
 		gpio_free(ext_spk_amp_gpio);
+	if (gpio_is_valid(vibrator_amp_gpio))
+		gpio_free(vibrator_amp_gpio);
 	snd_soc_unregister_card(card);
 	mutex_destroy(&cdc_mclk_mutex);
 
