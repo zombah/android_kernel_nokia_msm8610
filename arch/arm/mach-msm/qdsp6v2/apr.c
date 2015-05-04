@@ -122,6 +122,18 @@ static const struct apr_svc_table svc_tbl_qdsp6[] = {
 		.id = APR_SVC_LSM,
 		.client_id = APR_CLIENT_AUDIO,
 	},
+		{
+		.name = "VPM",
+		.idx = 11,
+		.id = APR_SVC_VPM,
+		.client_id = APR_CLIENT_AUDIO,
+	},
+	{
+		.name = "VSM",
+		.idx = 12,
+		.id = APR_SVC_VSM,
+		.client_id = APR_CLIENT_AUDIO,
+	},
 };
 
 static struct apr_svc_table svc_tbl_voice[] = {

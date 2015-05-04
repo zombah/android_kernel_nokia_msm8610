@@ -3053,4 +3053,11 @@ config KRAIT_REGULATOR
 	 line from the PMIC. This supply line is powered by multiple
 	 regulators running in ganged mode inside the PMIC. Enable
 	 this option to support such configurations.
+
+config ATTS_TUNING_TOOL
+	bool "Enable support for ATTS audio tuning tool"
+	depends on MSM_QDSP6_APRV2
+	default n
+	help
+	  Add support for Audio Tuning and Tracing Subsystem (ATTS) device.
 endif
