@@ -21,8 +21,6 @@
 #include "msm_led_flash.h"
 #include <linux/debugfs.h>
 
-#define FLASH_NAME "camera-led-flash"
-
 /*#define CONFIG_MSMB_CAMERA_DEBUG*/
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
@@ -106,22 +104,35 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 			flashdata->gpio_conf->cam_gpiomux_conf_tbl_size);
 	}
 
-	rc = msm_camera_request_gpio_table(
-		flashdata->gpio_conf->cam_gpio_req_tbl,
-		flashdata->gpio_conf->cam_gpio_req_tbl_size, 1);
-	if (rc < 0) {
-		pr_err("%s: request gpio failed\n", __func__);
-		return rc;
+	if (flashdata->gpio_conf->cam_gpio_req_tbl != NULL) {
+		rc = msm_camera_request_gpio_table(
+			flashdata->gpio_conf->cam_gpio_req_tbl,
+			flashdata->gpio_conf->cam_gpio_req_tbl_size, 1);
+		if (rc < 0) {
+			pr_err("%s: request gpio failed\n", __func__);
+			return rc;
+		}
+		msleep(20);
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->gpio_num[0],
+			GPIO_OUT_HIGH);
 	}
-	msleep(20);
-	gpio_set_value_cansleep(
-		flashdata->gpio_conf->gpio_num_info->gpio_num[0],
-		GPIO_OUT_HIGH);
 
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
 			fctrl->reg_setting->init_setting);
+/* Dummy read to settle standby current for ROHM flash IC driver*/
+#ifdef CONFIG_AS3644
+		if (rc > 0)
+		{
+			uint16_t data;
+			rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_read(
+				fctrl->flash_i2c_client,
+				0x00,
+				&data, MSM_CAMERA_I2C_BYTE_DATA);
+		}
+#endif
 		if (rc < 0)
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 	}
@@ -140,18 +151,21 @@ int msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
 		pr_err("%s:%d fctrl NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
-	gpio_set_value_cansleep(
-		flashdata->gpio_conf->gpio_num_info->gpio_num[0],
-		GPIO_OUT_LOW);
-	gpio_set_value_cansleep(
-		flashdata->gpio_conf->gpio_num_info->gpio_num[1],
-		GPIO_OUT_LOW);
-	rc = msm_camera_request_gpio_table(
-		flashdata->gpio_conf->cam_gpio_req_tbl,
-		flashdata->gpio_conf->cam_gpio_req_tbl_size, 0);
-	if (rc < 0) {
-		pr_err("%s: request gpio failed\n", __func__);
-		return rc;
+
+	if (flashdata->gpio_conf->cam_gpio_req_tbl != NULL) {
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->gpio_num[0],
+			GPIO_OUT_LOW);
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->gpio_num[1],
+			GPIO_OUT_LOW);
+		rc = msm_camera_request_gpio_table(
+			flashdata->gpio_conf->cam_gpio_req_tbl,
+			flashdata->gpio_conf->cam_gpio_req_tbl_size, 0);
+		if (rc < 0) {
+			pr_err("%s: request gpio failed\n", __func__);
+			return rc;
+		}
 	}
 	return 0;
 }
@@ -171,12 +185,26 @@ int msm_flash_led_off(struct msm_led_flash_ctrl_t *fctrl)
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
 			fctrl->reg_setting->off_setting);
+/* Dummy read to settle standby current for ROHM flash IC driver*/
+#ifdef CONFIG_AS3644
+		if (rc > 0)
+		{
+			uint16_t data;
+			rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_read(
+				fctrl->flash_i2c_client,
+				0x00,
+				&data, MSM_CAMERA_I2C_BYTE_DATA);
+		}
+#endif
 		if (rc < 0)
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 	}
-	gpio_set_value_cansleep(
-		flashdata->gpio_conf->gpio_num_info->gpio_num[1],
-		GPIO_OUT_LOW);
+
+	if (flashdata->gpio_conf->cam_gpio_req_tbl != NULL) {
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->gpio_num[1],
+			GPIO_OUT_LOW);
+	}
 
 	return rc;
 }
@@ -188,14 +216,16 @@ int msm_flash_led_low(struct msm_led_flash_ctrl_t *fctrl)
 	CDBG("%s:%d called\n", __func__, __LINE__);
 
 	flashdata = fctrl->flashdata;
-	gpio_set_value_cansleep(
-		flashdata->gpio_conf->gpio_num_info->gpio_num[0],
-		GPIO_OUT_HIGH);
 
-	gpio_set_value_cansleep(
-		flashdata->gpio_conf->gpio_num_info->gpio_num[1],
-		GPIO_OUT_HIGH);
+	if (flashdata->gpio_conf->cam_gpio_req_tbl != NULL) {
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->gpio_num[0],
+			GPIO_OUT_HIGH);
 
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->gpio_num[1],
+			GPIO_OUT_HIGH);
+	}
 
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
@@ -215,13 +245,15 @@ int msm_flash_led_high(struct msm_led_flash_ctrl_t *fctrl)
 	CDBG("%s:%d called\n", __func__, __LINE__);
 
 	flashdata = fctrl->flashdata;
-	gpio_set_value_cansleep(
-		flashdata->gpio_conf->gpio_num_info->gpio_num[0],
-		GPIO_OUT_HIGH);
+	if (flashdata->gpio_conf->cam_gpio_req_tbl != NULL) {
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->gpio_num[0],
+			GPIO_OUT_HIGH);
 
-	gpio_set_value_cansleep(
-		flashdata->gpio_conf->gpio_num_info->gpio_num[1],
-		GPIO_OUT_HIGH);
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->gpio_num[1],
+			GPIO_OUT_HIGH);
+	}
 
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
