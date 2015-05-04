@@ -36,6 +36,7 @@ struct evdev {
 	spinlock_t client_lock; /* protects client_list */
 	struct mutex mutex;
 	struct device dev;
+	struct kmem_cache *cache;
 	bool exist;
 };
 
@@ -261,6 +262,36 @@ static void evdev_hangup(struct evdev *evdev)
 	wake_up_interruptible(&evdev->wait);
 }
 
+#ifdef CONFIG_EVDEV_CACHE
+static struct evdev_client *zalloc_for_evdev_client(struct evdev *evdev,
+						    unsigned int bufsize)
+{
+	return kmem_cache_zalloc(evdev->cache, GFP_KERNEL);
+}
+static void free_evdev_client(struct evdev *evdev,
+			      struct evdev_client *client)
+{
+	kmem_cache_free(evdev->cache, client);
+}
+
+#else
+
+static struct evdev_client *zalloc_for_evdev_client(struct evdev *evdev,
+						    unsigned int bufsize)
+{
+	return kzalloc(sizeof(struct evdev_client) +
+				bufsize * sizeof(struct input_event),
+			       GFP_KERNEL);
+}
+
+static void free_evdev_client(struct evdev *evdev,
+			      struct evdev_client *client)
+{
+	kfree(client);
+}
+
+#endif
+
 static int evdev_release(struct inode *inode, struct file *file)
 {
 	struct evdev_client *client = file->private_data;
@@ -274,7 +305,7 @@ static int evdev_release(struct inode *inode, struct file *file)
 	evdev_detach_client(evdev, client);
 	if (client->use_wake_lock)
 		wake_lock_destroy(&client->wake_lock);
-	kfree(client);
+	free_evdev_client(evdev, client);
 
 	evdev_close_device(evdev);
 	put_device(&evdev->dev);
@@ -315,9 +346,7 @@ static int evdev_open(struct inode *inode, struct file *file)
 
 	bufsize = evdev_compute_buffer_size(evdev->handle.dev);
 
-	client = kzalloc(sizeof(struct evdev_client) +
-				bufsize * sizeof(struct input_event),
-			 GFP_KERNEL);
+	client = zalloc_for_evdev_client(evdev, bufsize);
 	if (!client) {
 		error = -ENOMEM;
 		goto err_put_evdev;
@@ -342,7 +371,7 @@ static int evdev_open(struct inode *inode, struct file *file)
 
  err_free_client:
 	evdev_detach_client(evdev, client);
-	kfree(client);
+	free_evdev_client(evdev, client);
  err_put_evdev:
 	put_device(&evdev->dev);
 	return error;
@@ -999,6 +1028,50 @@ static void evdev_cleanup(struct evdev *evdev)
 	}
 }
 
+#ifdef CONFIG_EVDEV_CACHE
+static int evdev_cache_create(struct evdev *evdev)
+{
+	unsigned int bufsize;
+
+	bufsize = evdev_compute_buffer_size(evdev->handle.dev);
+	bufsize *= sizeof(struct input_event);
+	bufsize += sizeof(struct evdev_client);
+
+	evdev->cache = kmem_cache_create(dev_name(&evdev->dev),
+						bufsize, 0,
+						SLAB_HWCACHE_ALIGN, NULL);
+	if (evdev->cache == NULL) {
+		pr_err("%s: evdev %s create cache failed.\n",
+			 __func__, dev_name(&evdev->dev));
+		return -ENOMEM;
+	}
+	pr_info("%s: evdev %s cache (%d) created.\n",
+			__func__, dev_name(&evdev->dev), bufsize);
+	return 0;
+}
+
+
+static void evdev_cache_destroy(struct evdev *evdev)
+{
+	if (evdev->cache != NULL) {
+		kmem_cache_destroy(evdev->cache);
+	}
+	pr_info("%s: evdev %s cache destroyed.\n",
+		__func__, dev_name(&evdev->dev));
+}
+
+#else
+static int evdev_cache_create(struct evdev *evdev)
+{
+return 0;
+}
+
+static void evdev_cache_destroy(struct evdev *evdev)
+{
+}
+
+#endif
+
 /*
  * Create new evdev device. Note that input core serializes calls
  * to connect and disconnect so we don't need to lock evdev_table here.
@@ -1055,8 +1128,14 @@ static int evdev_connect(struct input_handler *handler, struct input_dev *dev,
 	if (error)
 		goto err_cleanup_evdev;
 
+	error = evdev_cache_create(evdev);
+	if (error)
+		goto err_del_device;
+
 	return 0;
 
+ err_del_device:
+	device_del(&evdev->dev);
  err_cleanup_evdev:
 	evdev_cleanup(evdev);
  err_unregister_handle:
@@ -1070,6 +1149,7 @@ static void evdev_disconnect(struct input_handle *handle)
 {
 	struct evdev *evdev = handle->private;
 
+	evdev_cache_destroy(evdev);
 	device_del(&evdev->dev);
 	evdev_cleanup(evdev);
 	input_unregister_handle(handle);
