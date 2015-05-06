@@ -66,7 +66,6 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 	if (enable) {
 		dsi_ctrl_gpio_request(ctrl_pdata);
 		mdss_dsi_panel_reset(pdata, 1);
-		//msleep(150);
 		rc = ctrl_pdata->on(pdata);
 		if (rc)
 			pr_err("dsi_panel_handler panel on failed %d\n", rc);
