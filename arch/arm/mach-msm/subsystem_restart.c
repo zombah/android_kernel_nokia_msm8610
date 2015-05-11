@@ -36,7 +36,6 @@
 
 #include <asm/current.h>
 
-#include <mach/restart.h>
 #include <mach/socinfo.h>
 #include <mach/subsystem_notif.h>
 #include <mach/subsystem_restart.h>
@@ -737,7 +736,6 @@ static void __subsystem_restart_dev(struct subsys_device *dev)
 			wake_lock(&dev->wake_lock);
 			queue_work(ssr_wq, &dev->work);
 		} else {
-			msm_set_oem_panic_reason(NOKIA_PANIC_REASON_SUBSYS);
 			panic("Subsystem %s crashed during SSR!", name);
 		}
 	}
@@ -778,7 +776,6 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		__subsystem_restart_dev(dev);
 		break;
 	case RESET_SOC:
-		msm_set_oem_panic_reason(NOKIA_PANIC_REASON_SUBSYS);
 		panic("subsys-restart: Resetting the SoC - %s crashed.", name);
 		break;
 	default:
