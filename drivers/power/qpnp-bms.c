@@ -163,7 +163,6 @@ struct qpnp_bms_chip {
 	bool				last_soc_invalid;
 	/* platform data */
 	int				r_sense_uohm;
-	int				batt_temp_threshold;
 	unsigned int			v_cutoff_uv;
 	int				max_voltage_uv;
 	int				r_conn_mohm;
@@ -2583,9 +2582,6 @@ static int recalculate_soc(struct qpnp_bms_chip *chip)
 							result.measurement);
 			batt_temp = (int)result.physical;
 
-			if(batt_temp >= chip->batt_temp_threshold)
-				power_supply_changed(chip->batt_psy);
-
 			mutex_lock(&chip->last_ocv_uv_mutex);
 			read_soc_params_raw(chip, &raw, batt_temp);
 			soc = calculate_state_of_charge(chip, &raw, batt_temp);
@@ -3758,7 +3754,6 @@ static inline int bms_read_properties(struct qpnp_bms_chip *chip)
 {
 	int rc = 0;
 
-	SPMI_PROP_READ(batt_temp_threshold, "batt-temp-threshold", rc);
 	SPMI_PROP_READ(r_sense_uohm, "r-sense-uohm", rc);
 	SPMI_PROP_READ(v_cutoff_uv, "v-cutoff-uv", rc);
 	SPMI_PROP_READ(max_voltage_uv, "max-voltage-uv", rc);
