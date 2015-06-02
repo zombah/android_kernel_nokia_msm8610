@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 
+/include/ "dsi-panel-chimei-wvga-cmd.dtsi"
 /include/ "dsi-panel-truly-wvga-video.dtsi"
 /include/ "dsi-panel-truly-wvga-cmd.dtsi"
 /include/ "dsi-panel-nt35590-720p-video.dtsi"
