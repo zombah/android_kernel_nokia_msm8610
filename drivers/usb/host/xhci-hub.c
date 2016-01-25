@@ -541,7 +541,7 @@ static struct urb *xhci_request_single_step_set_feature_urb(
  */
 static int xhci_ehset_single_step_set_feature(struct usb_hcd *hcd, int port)
 {
-	int retval = -ENOMEM;
+	int retval;
 	struct usb_ctrlrequest *dr;
 	struct urb *urb;
 	struct usb_device *udev;
