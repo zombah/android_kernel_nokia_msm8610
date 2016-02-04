@@ -11,6 +11,22 @@
  */
 
 &soc {
+	ram_console {
+                compatible = "android,ram-console";
+                status = "ok";
+
+                android,ram-buffer-start = <0x3fc00000>;
+                android,ram-buffer-size = <0x20000>;
+        };
+
+        bootinfo {
+                compatible = "android,bootinfo";
+                status = "ok";
+
+                android,bootinfo-buffer-start = <0x3ef20000>;
+                android,bootinfo-buffer-size = <0x800>;
+        };
+
 	serial@f991e000 {
 		status = "ok";
 	};
