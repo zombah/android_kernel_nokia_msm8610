@@ -99,12 +99,12 @@ int cyttsp4_xres(struct cyttsp4_core_platform_data *pdata,
 	msleep(10);
 	gpio_set_value(TOUCH_SWITCH_EN, 1);
 	msleep(5);
-	dev_info(dev, "%s: reset by Power Switch done, gpio=%d\n", __func__, TOUCH_SWITCH_EN);
+	dev_dbg(dev, "%s: reset by Power Switch done, gpio=%d\n", __func__, TOUCH_SWITCH_EN);
 
 	gpio_set_value(rst_gpio, 0);
 	msleep(5);
 	gpio_set_value(rst_gpio, 1);
-	dev_info(dev,
+	dev_dbg(dev,
 		"%s: reset by RESET pin done, gpio=%d\n", __func__, pdata->rst_gpio);
 
 	return rc;
@@ -191,7 +191,7 @@ int cyttsp4_power(struct cyttsp4_core_platform_data *pdata,
 
 	switch(on) {
 	case CY_POWER_ON:
-		dev_info(dev, "%s: power ON\n", __func__);
+		dev_dbg(dev, "%s: power ON\n", __func__);
 
 		rc = gpio_direction_output(rst_gpio, 1);
 		if (rc < 0) {
@@ -199,7 +199,7 @@ int cyttsp4_power(struct cyttsp4_core_platform_data *pdata,
 				__func__, rst_gpio);
 			gpio_free(rst_gpio);
 		} else {
-			dev_info(dev, "%s: OK set output HIGH, gpio=%d\n",
+			dev_dbg(dev, "%s: OK set output HIGH, gpio=%d\n",
 				__func__, rst_gpio);
 		}
 		break;

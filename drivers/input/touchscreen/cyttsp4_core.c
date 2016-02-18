@@ -3318,7 +3318,7 @@ exit_no_wd:
 		rc = -ENODEV;
 
 	/* Required for signal to the TTHE */
-	dev_info(cd->dev, "%s: cyttsp4_exit startup r=%d...\n", __func__, rc);
+	dev_dbg(cd->dev, "%s: cyttsp4_exit startup r=%d...\n", __func__, rc);
 
 	return rc;
 }

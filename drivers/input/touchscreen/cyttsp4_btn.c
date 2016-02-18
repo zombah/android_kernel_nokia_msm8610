@@ -335,7 +335,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 
 	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
 		blank = evdata->data;
-		dev_info(dev, "%s, blank: %d, is_screen_on: %d\n", __func__, *blank, bd->is_screen_on);
+		dev_dbg(dev, "%s, blank: %d, is_screen_on: %d\n", __func__, *blank, bd->is_screen_on);
 		if ((*blank == FB_BLANK_UNBLANK) && (!bd->is_screen_on)) {
 			cyttsp4_btn_enable(&(bd->ttsp->dev));
 			bd->is_screen_on = true;
