@@ -2839,6 +2839,9 @@ static void bma2x2_irq_work_func(struct work_struct *work)
                 input_sync(bma2x2->ddtap);
              }
         }
+	input_report_key(bma2x2->ddtap, KEY_WAKEUP, 1);
+	input_report_key(bma2x2->ddtap, KEY_WAKEUP, 0);
+	input_sync(bma2x2->ddtap);
         break;
     case SINGLE_TAP_INT_TRI:
         KMSGINF(&bma2x2->bma2x2_client->dev, "Accel,bma2x2_irq_work_func single tap interrupt happened\n");
@@ -3055,6 +3058,8 @@ static int bma2x2_probe(struct i2c_client *client,
     input_dev_ddtap->dev.parent = &data->bma2x2_client->dev;
     __set_bit(REL_MISC, input_dev_ddtap->relbit);
     input_set_capability(input_dev_ddtap, EV_REL, DOUBLE_TAP_INTERRUPT);
+    set_bit(EV_KEY, input_dev_ddtap->evbit);
+    set_bit(KEY_WAKEUP, input_dev_ddtap->keybit);
 
     input_set_drvdata(input_dev_ddtap, data);
     err = input_register_device(input_dev_ddtap);
