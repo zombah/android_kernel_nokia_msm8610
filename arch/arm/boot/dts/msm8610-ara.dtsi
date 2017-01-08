@@ -163,13 +163,12 @@
                         n2dm_acc,accel_dtap_z_direction = <1>;
                 };
 
-                bma250_acc@18 {
+                bma2x2@18 {
                         reg = <0x18>;
-                        compatible = "bma,bma250_acc";
+                        compatible = "bosch,bma2x2";
                         vdd-supply = <&pm8110_l19>;
                         vddio-supply = <&pm8110_l14>;
-                        interrupt-parent = <&msmgpio>;
-                        interrupts = <81 0x2>;
+                        gpios = <&msmgpio 81 0x2>; /* IRQ */
                         bma250_acc,min_interval = <0x5>;
                         bma250_acc,poll_interval = <200>;
                         bma250_acc,accel_direction = <6>;
