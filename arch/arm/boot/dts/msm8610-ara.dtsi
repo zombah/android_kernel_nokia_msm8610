@@ -169,6 +169,7 @@
                         vdd-supply = <&pm8110_l19>;
                         vddio-supply = <&pm8110_l14>;
                         gpios = <&msmgpio 81 0x2>; /* IRQ */
+                        bma,place = <5>;
                         bma250_acc,min_interval = <0x5>;
                         bma250_acc,poll_interval = <200>;
                         bma250_acc,accel_direction = <6>;
